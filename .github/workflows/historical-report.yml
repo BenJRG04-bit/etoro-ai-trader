@@ -20,6 +20,8 @@ jobs:
         run: python historical_report.py > historical_evaluation_report.json
       - name: Summarize historical comparison results
         run: python historical_summary.py > historical_summary.json
+      - name: Build conservative research readiness assessment
+        run: python -c 'import json; from readiness_assessment import assess_research_readiness; r=json.load(open("historical_evaluation_report.json")); print(json.dumps(assess_research_readiness(r), indent=2))' > research_readiness.json
       - name: Upload report artifact
         if: always()
         uses: actions/upload-artifact@v4
@@ -28,5 +30,6 @@ jobs:
           path: |
             historical_evaluation_report.json
             historical_summary.json
+            research_readiness.json
           if-no-files-found: warn
           retention-days: 30
