@@ -1,0 +1,41 @@
+name: Project ET offline shared portfolio
+on:
+  push:
+    paths:
+      - 'portfolio_simulator.py'
+      - 'run_portfolio_report.py'
+      - 'tests/test_portfolio_simulator.py'
+      - '.github/workflows/portfolio-simulation.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  portfolio:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Run all offline tests
+        run: python -m unittest discover -s tests -v
+      - name: Simulate one shared historical portfolio
+        run: python run_portfolio_report.py > portfolio_report.json
+      - name: Summarize safety and availability
+        run: |
+          python - <<'PY'
+          import json
+          r=json.load(open("portfolio_report.json"))
+          if r["status"] == "EXPLORATORY_ONLY":
+              s=r["simulation"]
+              print(f"Historical shared £100 account: end £{s['end_equity']:.2f}; maximum total exposure {s['max_observed_total_allocation']:.1%}; drawdown {s['max_drawdown_fraction']:.2%}")
+          else:
+              print("Portfolio unavailable: " + r["error_type"] + " (no invented results)")
+          PY
+      - name: Archive portfolio report
+        uses: actions/upload-artifact@v4
+        with:
+          name: project-et-shared-portfolio
+          path: portfolio_report.json
+          retention-days: 30
