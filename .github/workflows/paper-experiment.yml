@@ -1,0 +1,44 @@
+name: Project ET £100 historical paper experiment
+on:
+  push:
+    paths:
+      - 'run_paper_report.py'
+      - 'paper_account.py'
+      - 'paper_performance_report.py'
+      - '.github/workflows/paper-experiment.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  paper-experiment:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Run unit tests
+        run: python -m unittest discover -s tests -v
+      - name: Fetch public historical prices and evaluate £100 hypothetical accounts
+        run: python run_paper_report.py > paper_experiment_results.json
+      - name: Show concise experiment results
+        run: |
+          python - <<'PY'
+          import json
+          d = json.load(open("paper_experiment_results.json"))
+          for ticker, entry in d["assets"].items():
+              if entry["status"] != "EXPLORATORY_ONLY":
+                  print(f"{ticker}: unavailable ({entry.get('error_type', 'unknown')})")
+                  continue
+              r = entry["report"]
+              print(f"{ticker}: strategy £{r['strategy_end']:.2f}; matched hold £{r['benchmark_end']:.2f}; difference £{r['strategy_minus_benchmark_gbp']:+.2f}")
+          PY
+      - name: Upload historical experiment results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: project-et-paper-experiment
+          path: paper_experiment_results.json
+          if-no-files-found: warn
+          retention-days: 30
