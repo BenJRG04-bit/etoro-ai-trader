@@ -11,6 +11,9 @@ def sample_scenarios(length=180):
         "sideways": [100 * (1 + 0.008 * ((i % 10) - 4.5) / 4.5) for i in range(length)],
         "shock": [100 * (1.001 ** i) * (0.72 if i >= length // 2 else 1)
                   for i in range(length)],
+        "crash_recovery": [100 * (1.001 ** i) * (0.65 if length // 3 <= i < 2 * length // 3 else 1)
+                           for i in range(length)],
+        "volatile": [100 * (1 + 0.06 * ((-1) ** i)) for i in range(length)],
     }
 
 def run_scenario_suite(starting_cash=1000.0, fee_rate=0.001, max_allocation=0.05):
