@@ -1,0 +1,42 @@
+name: Project ET evidence quality audit
+on:
+  push:
+    paths:
+      - 'evidence_quality.py'
+      - 'run_quality_report.py'
+      - '.github/workflows/evidence-quality.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Run all tests
+        run: python -m unittest discover -s tests -v
+      - name: Check historical research sample adequacy
+        run: python run_quality_report.py > evidence_quality_report.json
+      - name: Print explicit quality warnings
+        run: |
+          python - <<'PY'
+          import json
+          report = json.load(open("evidence_quality_report.json"))
+          for ticker, row in report["assets"].items():
+              if row["status"] != "EXPLORATORY_ONLY":
+                  print(f"{ticker}: unavailable")
+                  continue
+              print(f"{ticker}: sample adequate on all horizons? {row['sample_adequate']}")
+              for horizon, details in row["quality"]["horizons"].items():
+                  print(f"  {horizon}d: adequate={details['sample_adequate']} warnings={details['warnings']}")
+          PY
+      - name: Archive quality report
+        uses: actions/upload-artifact@v4
+        with:
+          name: project-et-evidence-quality
+          path: evidence_quality_report.json
+          retention-days: 30
