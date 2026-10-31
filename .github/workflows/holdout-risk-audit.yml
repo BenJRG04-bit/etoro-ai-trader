@@ -1,0 +1,43 @@
+name: Project ET chronological holdout audit
+on:
+  push:
+    paths:
+      - 'holdout_risk_audit.py'
+      - 'run_holdout_report.py'
+      - '.github/workflows/holdout-risk-audit.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Test all offline modules
+        run: python -m unittest discover -s tests -v
+      - name: Evaluate fixed chronological split
+        run: python run_holdout_report.py > holdout_risk_audit.json
+      - name: Show holdout risk comparisons
+        run: |
+          python - <<'PY'
+          import json
+          report = json.load(open("holdout_risk_audit.json"))
+          for ticker, asset in report["assets"].items():
+              if asset["status"] != "EXPLORATORY_ONLY":
+                  print(ticker, "unavailable")
+                  continue
+              for segment, data in asset["audit"]["segments"].items():
+                  v = data["horizons"]["20"]["veto"]
+                  n = data["horizons"]["20"]["non_veto"]
+                  print(f"{ticker} {segment}: 20d veto count={v['observations']} mean={v['mean_forward_return_fraction']} loss5%={v['loss_5pct_or_more_count']}; no veto count={n['observations']} mean={n['mean_forward_return_fraction']} loss5%={n['loss_5pct_or_more_count']}")
+          PY
+      - name: Save research audit
+        uses: actions/upload-artifact@v4
+        with:
+          name: project-et-holdout-risk-audit
+          path: holdout_risk_audit.json
+          retention-days: 30
