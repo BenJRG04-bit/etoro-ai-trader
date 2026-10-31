@@ -1,0 +1,43 @@
+name: Project ET chronological confirmation research
+on:
+  push:
+    paths:
+      - 'confirmation_chronological_validation.py'
+      - 'run_chronological_confirmation.py'
+      - 'tests/test_confirmation_chronological_validation.py'
+      - '.github/workflows/chronological-confirmation.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Offline tests
+        run: python -m unittest discover -s tests -v
+      - name: Compare fixed policies on chronological periods
+        run: python run_chronological_confirmation.py > chronological_confirmation_report.json
+      - name: Print retrospective comparison
+        run: |
+          python - <<'PY'
+          import json
+          r=json.load(open("chronological_confirmation_report.json"))
+          if r["status"] != "EXPLORATORY_ONLY":
+              print("Unavailable: " + r["error_type"])
+          else:
+              v=r["validation"]
+              print(f"Earlier return intervals: {v['earlier_evaluation_return_intervals']}, later: {v['later_evaluation_return_intervals']}")
+              for section in ("earlier", "later"):
+                  for fee, row in v[section]["scenarios"].items():
+                      print(f"{section} fee={fee}: existing £{row['existing_council']['end_equity']:.2f}, confirmed £{row['two_close_confirmation']['end_equity']:.2f}, difference £{row['confirmed_minus_existing_end_equity']:.2f}")
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: project-et-chronological-confirmation
+          path: chronological_confirmation_report.json
+          retention-days: 30
