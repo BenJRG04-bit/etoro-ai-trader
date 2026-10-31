@@ -6,13 +6,15 @@ Long/cash only. Includes configurable per-side transaction cost.
 from math import isfinite
 from six_brains import council
 
-def backtest(closes, starting_cash=1000.0, fee_rate=0.001, max_allocation=0.05):
+def backtest(closes, starting_cash=1000.0, fee_rate=0.001, max_allocation=0.05, *, assessment_fn=None):
     if len(closes) < 62 or any(not isfinite(p) or p <= 0 for p in closes):
         raise ValueError("Need at least 62 finite positive closes")
     if starting_cash <= 0 or not isfinite(starting_cash):
         raise ValueError("Invalid starting cash")
     if not (0 <= fee_rate < 1 and 0 <= max_allocation <= 0.05):
         raise ValueError("Invalid fee or allocation")
+    if assessment_fn is None:
+        assessment_fn = council
     equity = starting_cash
     peak = equity
     position = 0.0
@@ -20,7 +22,7 @@ def backtest(closes, starting_cash=1000.0, fee_rate=0.001, max_allocation=0.05):
     curve = [equity]
     stopped = False
     for t in range(59, len(closes) - 1):
-        assessment = council(closes[:t + 1])
+        assessment = assessment_fn(closes[:t + 1])
         desired = max_allocation if assessment["decision"] == "POSITIVE_RESEARCH" else 0.0
         if stopped or equity <= 0.9 * peak:
             stopped = True
