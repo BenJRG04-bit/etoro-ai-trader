@@ -1,0 +1,28 @@
+name: Historical strategy evaluation (read-only)
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '15 19 * * 1'
+permissions:
+  contents: read
+jobs:
+  historical-evaluation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Verify offline unit tests
+        run: python -m unittest discover -s tests -v
+      - name: Build historical evaluation report from public data
+        run: python historical_report.py > historical_evaluation_report.json
+      - name: Upload report artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: project-et-historical-evaluation
+          path: historical_evaluation_report.json
+          if-no-files-found: warn
+          retention-days: 30
