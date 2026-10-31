@@ -47,12 +47,12 @@ def render_dashboard(reports, generated_at=None):
         strategy = paper_data.get("strategy", {})
         benchmark = paper_data.get("benchmark", {})
         # Exact structure of paper report may vary. Display N/A rather than guessing.
-        strategy_final = strategy.get("final_equity") if isinstance(strategy, dict) else None
+        strategy_final = strategy.get("end_equity") if isinstance(strategy, dict) else None
         benchmark_final = benchmark.get("final_equity") if isinstance(benchmark, dict) else None
         if strategy_final is None:
-            strategy_final = paper_data.get("strategy_final_equity")
+            strategy_final = paper_data.get("strategy_end")
         if benchmark_final is None:
-            benchmark_final = paper_data.get("benchmark_final_equity")
+            benchmark_final = paper_data.get("benchmark_end")
         veto = severity.get("severity", {}).get("horizons", {}).get("20", {}).get("veto", {})
         later = holdout.get("audit", {}).get("segments", {}).get("later_holdout", {}).get("horizons", {}).get("20", {}).get("veto", {})
         adequate = quality.get("sample_adequate") if quality.get("status") == "EXPLORATORY_ONLY" else None
