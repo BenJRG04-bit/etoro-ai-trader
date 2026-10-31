@@ -15,6 +15,7 @@ REPORT_FILES = {
     "severity": "risk_severity_report.json",
     "holdout": "holdout_risk_audit.json",
     "quality": "evidence_quality_report.json",
+    "strategies": "strategy_evaluation_report.json",
 }
 
 def _safe(value):
@@ -41,6 +42,7 @@ def render_dashboard(reports, generated_at=None):
         quality = reports.get("quality", {}).get("assets", {}).get(ticker, {})
         severity = reports.get("severity", {}).get("assets", {}).get(ticker, {})
         holdout = reports.get("holdout", {}).get("assets", {}).get(ticker, {})
+        evaluation = reports.get("strategies", {}).get("assets", {}).get(ticker, {})
         available = [name for name in REPORT_FILES if reports.get(name, {}).get("assets", {}).get(ticker, {}).get("status") == "EXPLORATORY_ONLY"]
         missing = sorted(set(REPORT_FILES) - set(available))
         paper_data = _extract_paper(paper) if paper.get("status") == "EXPLORATORY_ONLY" else {}
@@ -57,18 +59,29 @@ def render_dashboard(reports, generated_at=None):
         later = holdout.get("audit", {}).get("segments", {}).get("later_holdout", {}).get("horizons", {}).get("20", {}).get("veto", {})
         adequate = quality.get("sample_adequate") if quality.get("status") == "EXPLORATORY_ONLY" else None
         label = "ADEQUATE COUNT ONLY" if adequate is True else "INSUFFICIENT" if adequate is False else "UNKNOWN"
+        later_scenarios = evaluation.get("evaluation", {}).get("segments", {}).get("later_holdout", {}).get("scenarios", {}) if evaluation.get("status") == "EXPLORATORY_ONLY" else {}
+        base_fee = later_scenarios.get("0.001", {})
+        stressed_fee = later_scenarios.get("0.005", {})
+        def end_value(scenarios, policy):
+            return scenarios.get(policy, {}).get("end_equity")
+        council_end = end_value(base_fee, "council_guarded")
+        hold_end = end_value(base_fee, "capped_hold")
+        stressed_end = end_value(stressed_fee, "council_guarded")
         cells = [
             _safe(ticker),
-            f"{len(available)}/6",
+            f"{len(available)}/{len(REPORT_FILES)}",
             _safe(label),
             "£" + _number(strategy_final) if strategy_final is not None else "N/A",
             "£" + _number(benchmark_final) if benchmark_final is not None else "N/A",
             _fraction(veto.get("worst_return_fraction")),
             str(later.get("observations", "N/A")),
             _safe(", ".join(missing) if missing else "none"),
+            "£" + _number(council_end) if council_end is not None else "N/A",
+            "£" + _number(hold_end) if hold_end is not None else "N/A",
+            "£" + _number(stressed_end) if stressed_end is not None else "N/A",
         ]
         rows.append("<tr>" + "".join("<td>" + x + "</td>" for x in cells) + "</tr>")
-    headers = ("Asset", "Reports", "Sample check", "Strategy £100", "Matched hold £100", "Worst 20d veto outcome", "Later 20d veto samples", "Missing reports")
+    headers = ("Asset", "Reports", "Sample check", "Strategy £100", "Matched hold £100", "Worst 20d veto outcome", "Later 20d veto samples", "Missing reports", "Later council £100", "Later capped hold £100", "Later council higher fee £100")
     heading = "".join("<th scope='col'>" + _safe(x) + "</th>" for x in headers)
     return """<!doctype html><html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
@@ -77,7 +90,7 @@ def render_dashboard(reports, generated_at=None):
 :root{color-scheme:dark}body{font-family:system-ui,sans-serif;background:#0e1624;color:#eef4ff;margin:0;padding:2rem;line-height:1.5}
 main{max-width:1250px;margin:auto}h1{font-size:2rem;margin-bottom:.3rem}.tag{color:#9ed2ff}
 aside{background:#283a51;padding:1rem;border-left:4px solid #f6c56b;margin:1.5rem 0}
-section{overflow-x:auto;background:#172439;border-radius:12px;padding:1rem}table{width:100%;border-collapse:collapse;min-width:920px}
+section{overflow-x:auto;background:#172439;border-radius:12px;padding:1rem}table{width:100%;border-collapse:collapse;min-width:1300px}
 th,td{padding:.75rem;border-bottom:1px solid #3b4c62;text-align:left;vertical-align:top}
 th{color:#b9d9ff}small{color:#bdcbe0}footer{margin-top:1.5rem}
 </style></head><body><main><p class="tag">PROJECT E.T. / HISTORICAL RESEARCH</p>

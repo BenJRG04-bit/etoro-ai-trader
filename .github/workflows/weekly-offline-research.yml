@@ -31,6 +31,8 @@ jobs:
         run: python run_holdout_report.py > holdout_risk_audit.json
       - name: Evidence quality checks
         run: python run_quality_report.py > evidence_quality_report.json
+      - name: Fixed-policy chronological strategy evaluation
+        run: python run_strategy_report.py > strategy_evaluation_report.json
       - name: Create machine-readable research summary
         run: |
           python - <<'PY'
@@ -43,6 +45,7 @@ jobs:
               "severity": "risk_severity_report.json",
               "holdout": "holdout_risk_audit.json",
               "quality": "evidence_quality_report.json",
+              "strategies": "strategy_evaluation_report.json",
           }
           results = {}
           for label, filename in files.items():
@@ -86,6 +89,7 @@ jobs:
             risk_severity_report.json
             holdout_risk_audit.json
             evidence_quality_report.json
+            strategy_evaluation_report.json
             weekly_research_summary.json
             research_dashboard.html
           if-no-files-found: warn
