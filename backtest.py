@@ -5,8 +5,9 @@ Long/cash only. Includes configurable per-side transaction cost.
 """
 from math import isfinite
 from six_brains import council
+from capital_guard import CapitalGuard
 
-def backtest(closes, starting_cash=1000.0, fee_rate=0.001, max_allocation=0.05, *, assessment_fn=None):
+def backtest(closes, starting_cash=1000.0, fee_rate=0.001, max_allocation=0.05, *, assessment_fn=None, use_capital_guard=False):
     if len(closes) < 62 or any(not isfinite(p) or p <= 0 for p in closes):
         raise ValueError("Need at least 62 finite positive closes")
     if starting_cash <= 0 or not isfinite(starting_cash):
@@ -21,11 +22,20 @@ def backtest(closes, starting_cash=1000.0, fee_rate=0.001, max_allocation=0.05, 
     trades = 0
     curve = [equity]
     stopped = False
+    guard = CapitalGuard(starting_cash) if use_capital_guard else None
+    halt_reason = None
     for t in range(59, len(closes) - 1):
         assessment = assessment_fn(closes[:t + 1])
         desired = max_allocation if assessment["decision"] == "POSITIVE_RESEARCH" else 0.0
-        if stopped or equity <= 0.9 * peak:
+        if guard is not None:
+            guard_state = guard.observe(equity)
+            if guard_state["halted"]:
+                stopped = True
+                halt_reason = guard_state["reason"]
+        elif stopped or equity <= 0.9 * peak:
             stopped = True
+            halt_reason = "MAX_DRAWDOWN"
+        if stopped:
             desired = 0.0
         # Charge a simple turnover fee at the rebalance close.
         turnover = abs(desired - position)
@@ -36,12 +46,19 @@ def backtest(closes, starting_cash=1000.0, fee_rate=0.001, max_allocation=0.05, 
         period_return = closes[t + 1] / closes[t] - 1
         equity *= 1 + position * period_return
         peak = max(peak, equity)
+        if guard is not None:
+            guard_state = guard.observe(equity)
+            if guard_state["halted"]:
+                stopped = True
+                halt_reason = guard_state["reason"]
         curve.append(equity)
     return {"mode": "OFFLINE_BACKTEST_NO_ORDERS", "start_equity": starting_cash,
             "end_equity": round(equity, 4), "return_fraction": round(equity / starting_cash - 1, 6),
             "max_drawdown_fraction": round(max((max(curve[:i + 1]) - v) / max(curve[:i + 1])
                                                for i, v in enumerate(curve)), 6),
             "rebalance_events": trades, "stopped": stopped,
+            "capital_guard_enabled": use_capital_guard,
+            "halt_reason": halt_reason,
             "fee_rate": fee_rate, "max_allocation": max_allocation,
             "limitations": "Illustrative: close prices, simple fees, no spread/slippage/taxes, no benchmark or out-of-sample validation.",
             "research_only": True}
