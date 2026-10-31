@@ -1,0 +1,38 @@
+name: Project ET forward research snapshots
+on:
+  schedule:
+    - cron: '45 23 * * 1-5'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  snapshot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Offline tests
+        run: python -m unittest discover -s tests -v
+      - name: Freeze current public-data research signals
+        run: python run_forward_snapshot.py > forward_signal_snapshot.json
+      - name: Check snapshot status
+        run: |
+          python - <<'PY'
+          import json
+          r=json.load(open("forward_signal_snapshot.json"))
+          print("Snapshot status:", r["status"])
+          if r["status"] != "SNAPSHOT_RESEARCH_ONLY":
+              print("Unavailable:", r.get("error_type"))
+          else:
+              print("Decision close date:", r["snapshot"]["snapshot_date"])
+              print("Assets:", ", ".join(r["snapshot"]["assets"]))
+          PY
+      - name: Archive immutable run artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: project-et-forward-signals
+          path: forward_signal_snapshot.json
+          retention-days: 90
