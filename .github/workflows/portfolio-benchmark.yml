@@ -1,0 +1,41 @@
+name: Project ET portfolio benchmark research
+on:
+  push:
+    paths:
+      - 'portfolio_benchmark.py'
+      - 'run_portfolio_benchmark.py'
+      - 'tests/test_portfolio_benchmark.py'
+      - '.github/workflows/portfolio-benchmark.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  compare:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Offline tests
+        run: python -m unittest discover -s tests -v
+      - name: Fetch public data and compare shared-account policies
+        run: python run_portfolio_benchmark.py > portfolio_benchmark_report.json
+      - name: Print research summary
+        run: |
+          python - <<'PY'
+          import json
+          report=json.load(open("portfolio_benchmark_report.json"))
+          if report["status"] != "EXPLORATORY_ONLY":
+              print("Unavailable: " + report["error_type"])
+          else:
+              for fee, row in report["comparison"]["scenarios"].items():
+                  print(f"fee={fee}: council £{row['council_guarded']['end_equity']:.2f}, capped hold £{row['equal_weight_capped_hold']['end_equity']:.2f}, difference £{row['council_minus_hold']:.2f}")
+          PY
+      - name: Archive offline report
+        uses: actions/upload-artifact@v4
+        with:
+          name: project-et-portfolio-benchmark
+          path: portfolio_benchmark_report.json
+          retention-days: 30
