@@ -6,6 +6,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from project_et import WATCHLIST, analyse_prices
 from six_brains import council
+from backtest import backtest
 
 def fetch_closes(ticker):
     url = "https://query1.finance.yahoo.com/v8/finance/chart/" + ticker + "?range=6mo&interval=1d"
@@ -25,6 +26,10 @@ def main():
             prices = fetch_closes(ticker)
             result = analyse_prices(ticker, prices)
             result["six_brain_research"] = council(prices)
+            if len(prices) >= 62:
+                result["historical_backtest"] = backtest(prices)
+            else:
+                result["historical_backtest"] = {"status": "INSUFFICIENT_DATA"}
             report["results"].append(result)
         except (OSError, ValueError, KeyError, IndexError, TypeError) as exc:
             failures += 1
