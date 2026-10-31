@@ -18,11 +18,16 @@ jobs:
         run: python -m unittest discover -s tests -v
       - name: Fetch public historical prices and produce research report
         run: python market_research.py
+      - name: Generate audited historical strategy report
+        if: always()
+        run: python generate_historical_report.py
       - name: Save report as workflow artifact
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: project-et-research-report
-          path: research_report.json
+          path: |
+            research_report.json
+            historical_research_report.json
           if-no-files-found: warn
           retention-days: 30
