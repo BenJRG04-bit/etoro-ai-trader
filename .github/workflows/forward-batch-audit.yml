@@ -1,0 +1,61 @@
+name: Project ET cumulative forward research audit
+on:
+  schedule:
+    - cron: '35 2 * * 2-6'
+  workflow_dispatch:
+permissions:
+  actions: read
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Offline unit tests
+        run: python -m unittest discover -s tests -v
+      - name: Download available archived forward snapshots
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          mkdir -p archived_snapshots
+          python - <<'PY'
+          import json, os, urllib.request
+          headers={"Authorization": "Bearer " + os.environ["GH_TOKEN"],
+                   "Accept": "application/vnd.github+json"}
+          url=f"https://api.github.com/repos/{os.environ['GH_REPO']}/actions/workflows/forward-signals.yml/runs?branch=main&status=success&per_page=100"
+          try:
+              with urllib.request.urlopen(urllib.request.Request(url,headers=headers),timeout=25) as response:
+                  runs=json.load(response).get("workflow_runs", [])
+              ids=[str(r["id"]) for r in runs if r.get("conclusion")=="success"]
+          except (OSError, ValueError, KeyError) as exc:
+              print("Archive discovery unavailable:", type(exc).__name__)
+              ids=[]
+          with open("archived_run_ids.txt","w") as f: f.write("\n".join(ids[:90]))
+          print("Available successful snapshot runs:",len(ids[:90]))
+          PY
+          while read -r run_id || [ -n "$run_id" ]; do
+            [ -n "$run_id" ] || continue
+            mkdir -p "archived_snapshots/$run_id"
+            gh run download "$run_id" -n project-et-forward-signals -D "archived_snapshots/$run_id" || echo "Missing/expired artifact for run $run_id"
+          done < archived_run_ids.txt
+      - name: Audit all downloaded snapshots against later closes
+        run: python run_forward_batch_audit.py archived_snapshots > forward_batch_audit_report.json
+      - name: Print research coverage
+        run: |
+          python - <<'PY'
+          import json
+          r=json.load(open("forward_batch_audit_report.json"))
+          print("Status:",r["status"])
+          for key in ("snapshot_count","observed_snapshots","pending_snapshots","unavailable_snapshots","rejected_snapshots"):
+              if key in r: print(key,r[key])
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: project-et-forward-batch-audit
+          path: forward_batch_audit_report.json
+          retention-days: 90
