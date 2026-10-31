@@ -57,7 +57,8 @@ class ForwardSignalTests(unittest.TestCase):
             observed.append(len(closes))
             return positive(closes)
         create_signal_snapshot(self.rows, assessor)
-        self.assertEqual(observed, [70, 69, 70, 69])
+        self.assertEqual(observed, [70, 70, 69, 70, 70, 69])
+        self.assertTrue(all(n <= 70 for n in observed))
 
 if __name__ == "__main__":
     unittest.main()
