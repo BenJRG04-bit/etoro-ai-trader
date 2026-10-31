@@ -10,10 +10,16 @@ from historical_evaluation import evaluate_windows
 
 def run_historical_research(fetcher=fetch_daily_closes, period="2y",
                             test_size=60):
+    if period not in ("1y", "2y", "5y"):
+        raise ValueError("Unsupported history period")
+    if not isinstance(test_size, int) or isinstance(test_size, bool) or test_size < 2:
+        raise ValueError("test_size must be an integer >= 2")
     results = {}
     for ticker in WATCHLIST:
         try:
             history = fetcher(ticker, period=period)
+            if history.get("ticker") != ticker:
+                raise ValueError("Historical data ticker does not match request")
             audit = audit_history(history)
             evaluation = evaluate_windows(history["closes"], test_size=test_size)
             results[ticker] = {
