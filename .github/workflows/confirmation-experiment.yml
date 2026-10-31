@@ -1,0 +1,40 @@
+name: Project ET confirmation experiment
+on:
+  push:
+    paths:
+      - 'decision_confirmation_experiment.py'
+      - 'run_confirmation_report.py'
+      - 'tests/test_decision_confirmation_experiment.py'
+      - '.github/workflows/confirmation-experiment.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  research:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Offline tests
+        run: python -m unittest discover -s tests -v
+      - name: Compare confirmation policies on historical data
+        run: python run_confirmation_report.py > confirmation_report.json
+      - name: Print comparison
+        run: |
+          python - <<'PY'
+          import json
+          r=json.load(open("confirmation_report.json"))
+          if r["status"] != "EXPLORATORY_ONLY":
+              print("Unavailable: " + r["error_type"])
+          else:
+              for fee, row in r["comparison"]["scenarios"].items():
+                  print(f"fee={fee}: existing £{row['existing_council']['end_equity']:.2f}, confirmed £{row['two_close_confirmation']['end_equity']:.2f}, difference £{row['confirmed_minus_existing_end_equity']:.2f}, rebalance change {row['rebalance_event_difference']}")
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: project-et-confirmation-experiment
+          path: confirmation_report.json
+          retention-days: 30
