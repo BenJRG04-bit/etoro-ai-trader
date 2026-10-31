@@ -1,0 +1,43 @@
+name: Project ET portfolio decision diagnostics
+on:
+  push:
+    paths:
+      - 'portfolio_decision_diagnostics.py'
+      - 'run_portfolio_diagnostics.py'
+      - 'tests/test_portfolio_decision_diagnostics.py'
+      - '.github/workflows/portfolio-decision-diagnostics.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Run offline tests
+        run: python -m unittest discover -s tests -v
+      - name: Run historical decision diagnostics
+        run: python run_portfolio_diagnostics.py > portfolio_decision_report.json
+      - name: Print diagnostics
+        run: |
+          python - <<'PY'
+          import json
+          r=json.load(open("portfolio_decision_report.json"))
+          if r["status"] != "EXPLORATORY_ONLY":
+              print("Diagnostics unavailable: " + r["error_type"])
+          else:
+              d=r["diagnostics"]
+              print(f"Decision days {d['observed_decision_days']}, all-cash days {d['days_all_in_cash']}, target changes {d['portfolio_target_changes']}, approximate fee fraction {d['approx_fee_fraction_of_starting_capital']:.4%}")
+              for ticker, row in d["assets"].items():
+                  print(f"{ticker}: positive {row['positive_days']}, veto {row['veto_days']}, nonpositive before rising next day {row['nonpositive_before_up_day']}")
+          PY
+      - name: Archive offline diagnostics
+        uses: actions/upload-artifact@v4
+        with:
+          name: project-et-portfolio-decision-diagnostics
+          path: portfolio_decision_report.json
+          retention-days: 30
