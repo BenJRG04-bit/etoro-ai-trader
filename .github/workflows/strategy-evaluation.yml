@@ -1,0 +1,43 @@
+name: Project ET v0.4 fixed-strategy evaluation
+on:
+  push:
+    paths:
+      - 'strategy_evaluation.py'
+      - 'run_strategy_report.py'
+      - 'tests/test_strategy_evaluation.py'
+      - '.github/workflows/strategy-evaluation.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  evaluate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Test all offline modules
+        run: python -m unittest discover -s tests -v
+      - name: Evaluate fixed policies on public historical prices
+        run: python run_strategy_report.py > strategy_evaluation_report.json
+      - name: Show cost-stress results and missing data
+        run: |
+          python - <<'PY'
+          import json
+          report = json.load(open("strategy_evaluation_report.json"))
+          for ticker, row in report["assets"].items():
+              if row["status"] != "EXPLORATORY_ONLY":
+                  print(f"{ticker}: UNAVAILABLE")
+                  continue
+              later = row["evaluation"]["segments"]["later_holdout"]["scenarios"]
+              for fee, policies in later.items():
+                  print(f"{ticker} later fee={fee}: " + ", ".join(f"{k} £{v['end_equity']:.2f} drawdown={v['max_drawdown_fraction']:.2%}" for k,v in policies.items()))
+          PY
+      - name: Archive offline strategy evaluation
+        uses: actions/upload-artifact@v4
+        with:
+          name: project-et-v04-strategy-evaluation
+          path: strategy_evaluation_report.json
+          retention-days: 30
