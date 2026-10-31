@@ -1,25 +1,20 @@
-"""Research-only market regime labels. Descriptive, not predictive."""
+"""Offline market regime classification. No broker access or orders."""
 from math import isfinite
-from statistics import mean, pstdev
 
-def classify_regime(closes):
-    if len(closes) < 60 or any(not isfinite(x) or x <= 0 for x in closes):
-        return {"regime": "INSUFFICIENT_DATA", "research_only": True}
-    ma20 = mean(closes[-20:])
-    ma50 = mean(closes[-50:])
-    returns = [closes[i] / closes[i-1] - 1 for i in range(len(closes)-20, len(closes))]
-    vol = pstdev(returns)
-    peak = max(closes[-60:])
-    drawdown = closes[-1] / peak - 1
-    if vol >= 0.03 or drawdown <= -0.12:
-        regime = "HIGH_RISK"
-    elif ma20 > ma50 * 1.005:
-        regime = "UPTREND"
-    elif ma20 < ma50 * 0.995:
-        regime = "DOWNTREND"
-    else:
-        regime = "SIDEWAYS"
-    return {"regime": regime, "volatility_20d": round(vol, 6),
-            "drawdown_60d": round(drawdown, 6),
-            "ma20": round(ma20, 6), "ma50": round(ma50, 6),
-            "research_only": True}
+def classify_regime(closes, short_window=20, long_window=60, flat_band=0.01):
+    if not isinstance(short_window, int) or not isinstance(long_window, int):
+        raise ValueError("Window sizes must be integers")
+    if short_window < 2 or long_window <= short_window:
+        raise ValueError("Require 2 <= short_window < long_window")
+    if not 0 <= flat_band < 1:
+        raise ValueError("flat_band must be between 0 and 1")
+    if len(closes) < long_window:
+        return {"regime": "UNKNOWN", "reason": "insufficient_history", "research_only": True}
+    prices = closes[-long_window:]
+    if any(not isinstance(p, (int, float)) or not isfinite(p) or p <= 0 for p in prices):
+        raise ValueError("Prices must be positive finite numbers")
+    short_ma = sum(prices[-short_window:]) / short_window
+    long_ma = sum(prices) / long_window
+    gap = short_ma / long_ma - 1
+    regime = "UPTREND" if gap > flat_band else "DOWNTREND" if gap < -flat_band else "SIDEWAYS"
+    return {"regime": regime, "ma_gap_fraction": round(gap, 8), "research_only": True}
