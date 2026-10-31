@@ -11,9 +11,10 @@ class IntegratedCapitalGuardTests(unittest.TestCase):
         self.assertFalse(result["stopped"])
 
     def test_profit_giveback_halts(self):
-        # Each +100% step at 5% allocation increases account equity by 5%.
-        # Then a 100% price drop is invalid, so use a large valid fall.
-        prices = [100.0] * 60 + [200.0, 400.0, 100.0] + [100.0] * 10
+        # A 120% rise at 5% allocation lifts account equity above the
+        # 5% profit-lock trigger; a subsequent 90% fall gives back over
+        # half of those gains without requiring an invalid zero price.
+        prices = [100.0] * 60 + [220.0, 22.0] + [22.0] * 10
         result = backtest(prices, assessment_fn=positive, use_capital_guard=True)
         self.assertTrue(result["capital_guard_enabled"])
         self.assertTrue(result["stopped"])
