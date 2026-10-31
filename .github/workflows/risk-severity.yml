@@ -1,0 +1,43 @@
+name: Project ET multi-horizon risk severity
+on:
+  push:
+    paths:
+      - 'risk_severity.py'
+      - 'run_severity_report.py'
+      - '.github/workflows/risk-severity.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  offline-research:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Test all modules
+        run: python -m unittest discover -s tests -v
+      - name: Fetch public market data and evaluate loss severity
+        run: python run_severity_report.py > risk_severity_report.json
+      - name: Show comparison of next-day and twenty-day outcomes
+        run: |
+          python - <<'PY'
+          import json
+          data = json.load(open("risk_severity_report.json"))
+          for ticker, row in data["assets"].items():
+              if row["status"] != "EXPLORATORY_ONLY":
+                  print(ticker, "unavailable")
+                  continue
+              for horizon in ("1", "20"):
+                  groups = row["severity"]["horizons"][horizon]
+                  veto, other = groups["veto"], groups["non_veto"]
+                  print(f"{ticker} {horizon}d: veto n={veto['observations']} mean={veto['mean_return_fraction']} worst={veto['worst_return_fraction']} >=5%loss={veto['loss_at_least_5pct_count']}; other n={other['observations']} mean={other['mean_return_fraction']} worst={other['worst_return_fraction']} >=5%loss={other['loss_at_least_5pct_count']}")
+          PY
+      - name: Save research results
+        uses: actions/upload-artifact@v4
+        with:
+          name: project-et-risk-severity
+          path: risk_severity_report.json
+          retention-days: 30
