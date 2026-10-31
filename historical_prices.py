@@ -25,13 +25,15 @@ def fetch_daily_closes(ticker, period="2y", opener=None):
     result = chart["result"][0]
     timestamps = result["timestamp"]
     closes = result["indicators"]["quote"][0]["close"]
+    if len(timestamps) != len(closes):
+        raise ValueError("Timestamp and price counts differ")
     rows = []
     for timestamp, close in zip(timestamps, closes):
         if close is None:
-            continue
+            raise ValueError("Missing daily close; refusing to bridge data gap")
         price = float(close)
         if not (0 < price < float("inf")):
-            continue
+            raise ValueError("Invalid daily close")
         date = datetime.fromtimestamp(timestamp, tz=timezone.utc).date().isoformat()
         if rows and date <= rows[-1][0]:
             raise ValueError("Non-increasing daily timestamps")
