@@ -1,0 +1,89 @@
+name: Project ET weekly offline research
+on:
+  schedule:
+    - cron: '15 7 * * 1'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: project-et-weekly-offline-research
+  cancel-in-progress: false
+jobs:
+  research:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Run all offline unit tests
+        run: python -m unittest discover -s tests -v
+      - name: Historical paper comparison
+        run: python run_paper_report.py > paper_experiment_results.json
+      - name: Historical decision diagnostics
+        run: python run_diagnostic_report.py > decision_diagnostic_report.json
+      - name: Risk warning next-day outcomes
+        run: python run_risk_veto_report.py > risk_veto_report.json
+      - name: Risk severity by horizon
+        run: python run_severity_report.py > risk_severity_report.json
+      - name: Chronological holdout audit
+        run: python run_holdout_report.py > holdout_risk_audit.json
+      - name: Evidence quality checks
+        run: python run_quality_report.py > evidence_quality_report.json
+      - name: Create machine-readable research summary
+        run: |
+          python - <<'PY'
+          import json
+          from datetime import datetime, timezone
+          files = {
+              "paper": "paper_experiment_results.json",
+              "decisions": "decision_diagnostic_report.json",
+              "veto_outcomes": "risk_veto_report.json",
+              "severity": "risk_severity_report.json",
+              "holdout": "holdout_risk_audit.json",
+              "quality": "evidence_quality_report.json",
+          }
+          results = {}
+          for label, filename in files.items():
+              with open(filename, encoding="utf-8") as handle:
+                  report = json.load(handle)
+              assets = report["assets"]
+              results[label] = {
+                  "available": sorted(k for k, v in assets.items() if v["status"] == "EXPLORATORY_ONLY"),
+                  "unavailable": sorted(k for k, v in assets.items() if v["status"] != "EXPLORATORY_ONLY"),
+              }
+          with open(files["quality"], encoding="utf-8") as handle:
+              quality = json.load(handle)
+          results["quality"]["sample_adequate"] = sorted(
+              k for k, v in quality["assets"].items()
+              if v["status"] == "EXPLORATORY_ONLY" and v["sample_adequate"]
+          )
+          summary = {
+              "generated_at_utc": datetime.now(timezone.utc).isoformat(),
+              "mode": "AUTOMATED_READ_ONLY_RESEARCH",
+              "orders_allowed": False,
+              "live_trading_approved": False,
+              "research_only": True,
+              "results": results,
+              "warning": "Recurring historical research is not evidence of profitability. No trading or auto-merge is enabled.",
+          }
+          with open("weekly_research_summary.json", "w", encoding="utf-8") as handle:
+              json.dump(summary, handle, indent=2)
+          print(json.dumps(summary, indent=2))
+          PY
+      - name: Upload weekly research bundle
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: project-et-weekly-offline-research
+          path: |
+            paper_experiment_results.json
+            decision_diagnostic_report.json
+            risk_veto_report.json
+            risk_severity_report.json
+            holdout_risk_audit.json
+            evidence_quality_report.json
+            weekly_research_summary.json
+          if-no-files-found: warn
+          retention-days: 30
