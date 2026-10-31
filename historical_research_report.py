@@ -16,6 +16,13 @@ def summarize_research(result):
             continue
         rows[ticker] = {
             "status": "EXPLORATORY_ONLY",
+            "data_provenance": {
+                "ticker": asset["data_audit"]["ticker"],
+                "first_date": asset["data_audit"]["first_date"],
+                "last_date": asset["data_audit"]["last_date"],
+                "observation_count": asset["data_audit"]["observation_count"],
+                "total_return_validated": asset["data_audit"]["valid_for_total_return_comparison"],
+            } if "data_audit" in asset else None,
             "windows": len(windows),
             "mean_baseline_return_fraction": round(
                 sum(w["baseline_return_fraction"] for w in windows) / len(windows), 6),
