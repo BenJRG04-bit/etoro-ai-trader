@@ -72,6 +72,8 @@ jobs:
               json.dump(summary, handle, indent=2)
           print(json.dumps(summary, indent=2))
           PY
+      - name: Build static research dashboard
+        run: python research_dashboard.py
       - name: Upload weekly research bundle
         if: always()
         uses: actions/upload-artifact@v4
@@ -85,5 +87,6 @@ jobs:
             holdout_risk_audit.json
             evidence_quality_report.json
             weekly_research_summary.json
+            research_dashboard.html
           if-no-files-found: warn
           retention-days: 30
