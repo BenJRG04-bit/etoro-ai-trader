@@ -5,6 +5,7 @@ import urllib.request
 from datetime import datetime, timezone
 from pathlib import Path
 from project_et import WATCHLIST, analyse_prices
+from six_brains import council
 
 def fetch_closes(ticker):
     url = "https://query1.finance.yahoo.com/v8/finance/chart/" + ticker + "?range=6mo&interval=1d"
@@ -22,7 +23,9 @@ def main():
     for ticker in WATCHLIST:
         try:
             prices = fetch_closes(ticker)
-            report["results"].append(analyse_prices(ticker, prices))
+            result = analyse_prices(ticker, prices)
+            result["six_brain_research"] = council(prices)
+            report["results"].append(result)
         except (OSError, ValueError, KeyError, IndexError, TypeError) as exc:
             failures += 1
             report["results"].append({"ticker": ticker, "signal": "DATA_ERROR",
