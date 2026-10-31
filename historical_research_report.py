@@ -26,6 +26,12 @@ def summarize_research(result):
             "adaptive_wins_vs_hold": sum(
                 w["regime_return_fraction"] > w["benchmark_return_fraction"]
                 for w in windows),
+            "adaptive_worst_window_return_fraction": min(
+                w["regime_return_fraction"] for w in windows),
+            "adaptive_worst_window_drawdown_fraction": (
+                max(w["regime_max_drawdown_fraction"] for w in windows)
+                if all("regime_max_drawdown_fraction" in w for w in windows)
+                else None),
         }
     return {
         "mode": "EXPLORATORY_HISTORICAL_REPORT_NO_ORDERS",
