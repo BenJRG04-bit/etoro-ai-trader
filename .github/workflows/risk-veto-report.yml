@@ -1,0 +1,41 @@
+name: Project ET risk veto historical outcomes
+on:
+  push:
+    paths:
+      - 'run_risk_veto_report.py'
+      - '.github/workflows/risk-veto-report.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  research:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Run unit tests
+        run: python -m unittest discover -s tests -v
+      - name: Fetch public prices and evaluate warnings
+        run: python run_risk_veto_report.py > risk_veto_report.json
+      - name: Summarize outcomes
+        run: |
+          python - <<'PY'
+          import json
+          data = json.load(open("risk_veto_report.json"))
+          for ticker, item in data["assets"].items():
+              if item["status"] != "EXPLORATORY_ONLY":
+                  print(f"{ticker}: data unavailable")
+                  continue
+              outcome = item["outcomes"]
+              a, b = outcome["veto_days"], outcome["other_days"]
+              print(f"{ticker}: warning days {a['days']}, down after warning {a['down_days']}, up after warning {a['up_days']}; nonwarning days {b['days']}, down {b['down_days']}, up {b['up_days']}")
+          PY
+      - name: Save report
+        uses: actions/upload-artifact@v4
+        with:
+          name: project-et-risk-veto-outcomes
+          path: risk_veto_report.json
+          retention-days: 30
