@@ -17,6 +17,7 @@ jobs:
       - name: Run offline unit tests first
         run: python -m unittest discover -s tests -v
       - name: Fetch public historical prices and produce research report
+        if: always()
         run: python market_research.py
       - name: Generate audited historical strategy report
         if: always()
@@ -29,5 +30,5 @@ jobs:
           path: |
             research_report.json
             historical_research_report.json
-          if-no-files-found: warn
+          if-no-files-found: error
           retention-days: 30
