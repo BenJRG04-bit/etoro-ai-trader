@@ -19,11 +19,12 @@ jobs:
       - name: Explain research council decisions
         run: python run_council_accountability.py > council_accountability_report.json
       - name: Build offline accountability dashboard
-        run: python council_accountability_dashboard.py
+        run: python publish_council_dashboard.py
       - uses: actions/upload-artifact@v4
         with:
           name: project-et-council-accountability
           path: |
             council_accountability_report.json
             council_accountability_dashboard.html
+            council_accountability_integrity.json
           retention-days: 90
