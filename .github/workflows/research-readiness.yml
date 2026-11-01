@@ -58,6 +58,15 @@ jobs:
           Path("research_readiness_report.json").write_text(json.dumps(report, indent=2), encoding="utf-8")
           print(report["status"], report["issues"])
           PY
+      - name: Cross-check readiness status against component evidence
+        run: |
+          python - <<'PY'
+          import json
+          from readiness_consistency import validate_readiness_consistency
+          with open('research_readiness_report.json', encoding='utf-8') as handle:
+              report = json.load(handle)
+          print(validate_readiness_consistency(report)['status'])
+          PY
       - name: Build offline readiness dashboard
         run: python research_readiness_dashboard.py
       - name: Validate research artifact contract
