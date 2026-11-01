@@ -69,6 +69,8 @@ jobs:
           PY
       - name: Summarize evidence quality and minimum sample counts
         run: python run_forward_evidence_quality.py forward_batch_audit_report.json > forward_evidence_quality_report.json
+      - name: Compare observed signals with a descriptive same-date market baseline
+        run: python forward_baseline_comparison.py
       - name: Print evidence status
         run: |
           python - <<'PY'
@@ -100,4 +102,5 @@ jobs:
             forward_evidence_quality_report.json
             forward_evidence_dashboard.html
             forward_archive_health_report.json
+            forward_baseline_comparison.json
           retention-days: 90
