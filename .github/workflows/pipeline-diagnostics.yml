@@ -1,0 +1,38 @@
+name: Project ET pipeline execution diagnostics
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '45 8 * * 2-6'
+permissions:
+  contents: read
+  actions: read
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Run offline unit tests
+        run: python -m unittest discover -s tests -v
+      - name: Inspect actual GitHub Actions run metadata
+        env:
+          GH_REPO: ${{ github.repository }}
+          GH_TOKEN: ${{ github.token }}
+        run: python run_workflow_diagnostics.py > workflow_diagnostics_report.json
+      - name: Print research pipeline health
+        run: |
+          python - <<'PY'
+          import json
+          with open('workflow_diagnostics_report.json') as handle:
+              report = json.load(handle)
+          print('Pipeline:', report['status'])
+          print('Unverified workflows:', ', '.join(report['blockers']) or 'none')
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: project-et-pipeline-diagnostics
+          path: workflow_diagnostics_report.json
+          retention-days: 90
