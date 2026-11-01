@@ -39,6 +39,15 @@ jobs:
               print("HTTP_STATUS:", error.code)
               print("API rejected request. Check permissions, key pairing and environment; no secrets printed.")
               print("ERROR_CATEGORY:", {401:"unauthorized",403:"forbidden",404:"endpoint_not_found",429:"rate_limited"}.get(error.code,"other_http_error"))
+              try:
+                  payload = json.loads(error.read(4096).decode("utf-8", errors="replace"))
+                  if isinstance(payload, dict):
+                      for field in ("code", "errorCode", "statusCode"):
+                          value = payload.get(field)
+                          if isinstance(value, int):
+                              print("API_ERROR_" + field.upper() + ":", value)
+              except (ValueError, UnicodeError):
+                  pass
               raise SystemExit(1)
           except Exception as error:
               print("NETWORK_ERROR_TYPE:", type(error).__name__)
