@@ -1,0 +1,70 @@
+name: Project ET optional OpenAI read-only research
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '45 23 * * 1-5'
+  push:
+    paths:
+      - 'openai_research_adviser.py'
+      - 'tests/test_openai_research_adviser.py'
+      - '.github/workflows/openai-research-adviser.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: project-et-optional-openai-research
+  cancel-in-progress: false
+
+jobs:
+  ai-research:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+      OPENAI_MODEL: gpt-4.1-mini
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Verify all offline safety tests
+        run: python -m unittest discover -s tests -v
+      - name: Run bounded OpenAI research, if configured
+        run: |
+          python - <<'PY'
+          import json, os
+          from pathlib import Path
+          from openai_research_adviser import run_openai_adviser, SAFE
+          from run_pattern_research import run_pattern_research
+
+          if not os.environ.get("OPENAI_API_KEY"):
+              result = {
+                  **SAFE, "status": "NOT_CONFIGURED", "assessments": [],
+                  "overall_caution": "OpenAI key not configured; no network call."
+              }
+          else:
+              # Public market data only; no eToro secrets or portfolio access.
+              report = run_pattern_research()
+              result = run_openai_adviser(
+                  report, model=os.environ.get("OPENAI_MODEL", "gpt-4.1-mini")
+              )
+          assert result["research_only"] is True
+          assert result["orders_allowed"] is False
+          assert result["demo_trading_approved"] is False
+          assert result["live_trading_approved"] is False
+          Path("openai_research_report.json").write_text(
+              json.dumps(result, indent=2), encoding="utf-8")
+          print("AI adviser status:", result["status"])
+          print("Research assessments:", len(result.get("assessments", [])))
+          print("Broker orders: ZERO")
+          PY
+      - name: Archive sanitized AI research summary
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: project-et-openai-research
+          path: openai_research_report.json
+          if-no-files-found: warn
+          retention-days: 30
