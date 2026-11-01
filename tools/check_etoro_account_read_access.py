@@ -1,8 +1,7 @@
-"""Read-only authentication diagnosis for the eToro Public API.
+"""Safe, read-only eToro API key diagnostics.
 
-Checks identity, REAL portfolio and DEMO portfolio read endpoints with the
-GitHub Actions API key pair. No order endpoints, POST requests, account values,
-tokens or response bodies. Never reuse this script as a trade execution module.
+Tests the documented first-call watchlist, identity and demo portfolio routes.
+Never sends trading orders, reads response bodies, or logs credentials.
 """
 import os
 import sys
@@ -12,8 +11,8 @@ import uuid
 
 BASE = "https://public-api.etoro.com/api/v1"
 ENDPOINTS = (
+    ("watchlist", "/watchlists/default-watchlists/items"),
     ("identity", "/me"),
-    ("real", "/trading/info/portfolio"),
     ("demo", "/trading/info/demo/portfolio"),
 )
 
@@ -22,7 +21,7 @@ def check_read_access(public_key, user_key, opener=urllib.request.urlopen):
     if not public_key or not user_key:
         return {"error": "MISSING_KEY_SECRETS"}
     results = {}
-    for account_type, path in ENDPOINTS:
+    for label, path in ENDPOINTS:
         request = urllib.request.Request(
             BASE + path,
             headers={
@@ -35,14 +34,30 @@ def check_read_access(public_key, user_key, opener=urllib.request.urlopen):
         )
         try:
             with opener(request, timeout=15) as response:
-                # Do not read, log, parse, or save any private account information.
-                results[account_type] = int(response.status)
+                results[label] = int(response.status)
         except urllib.error.HTTPError as exc:
-            results[account_type] = int(exc.code)
+            results[label] = int(exc.code)
             exc.close()
         except (urllib.error.URLError, TimeoutError, OSError):
-            results[account_type] = "NETWORK_ERROR"
+            results[label] = "NETWORK_ERROR"
     return results
+
+
+def diagnose(result):
+    if result.get("demo") == 200:
+        return "DEMO_READ_OK"
+    if result.get("watchlist") == 200:
+        return "WATCHLIST_OK_DEMO_DENIED_CHECK_DEMO_SCOPES"
+    if result.get("identity") == 200:
+        return "IDENTITY_OK_OTHER_READS_DENIED_CHECK_SCOPES"
+    if all(result.get(k) == 403 for k in ("watchlist", "identity", "demo")):
+        return "ALL_403_CHECK_KEY_PAIR_ENTITLEMENTS_OR_SOURCE_IP"
+    if any(result.get(k) == "NETWORK_ERROR" for k in ENDPOINT_LABELS):
+        return "NETWORK_ERROR_CHECK_GITHUB_CONNECTIVITY"
+    return "AUTH_UNCONFIRMED_CHECK_PUBLIC_KEY_USER_KEY_PAIR"
+
+
+ENDPOINT_LABELS = tuple(label for label, _ in ENDPOINTS)
 
 
 def main():
@@ -52,20 +67,11 @@ def main():
     if "error" in result:
         print("FAIL: Required GitHub secrets are missing or blank.")
         return 2
-    for account, code in result.items():
-        print(f"{account.upper()}_READ: {code}")
-    if result.get("real") == 200 and result.get("demo") != 200:
-        print("DIAGNOSIS: Real reading works through GitHub; demo reading is denied.")
-    elif result.get("demo") == 200 and result.get("real") != 200:
-        print("DIAGNOSIS: Demo reading works through GitHub; real reading is denied.")
-    elif result.get("real") == 200 and result.get("demo") == 200:
-        print("DIAGNOSIS: Both account read endpoints respond successfully.")
-    elif result.get("identity") == 200:
-        print("DIAGNOSIS: GitHub key pair works for identity, but trading reads are denied.")
-    else:
-        print("DIAGNOSIS: Identity and both account reads failed; key pair or API access requires investigation.")
+    for label in ENDPOINT_LABELS:
+        print(f"{label.upper()}_READ: {result[label]}")
+    print("DIAGNOSIS:", diagnose(result))
     print("NO_ORDERS_ATTEMPTED: true")
-    return 0 if (result.get("real") == 200 or result.get("demo") == 200) else 1
+    return 0 if result.get("demo") == 200 else 1
 
 
 if __name__ == "__main__":
