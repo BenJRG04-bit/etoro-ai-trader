@@ -10,7 +10,7 @@ def build_command_centre(reports):
     if not isinstance(reports, dict):
         raise ValueError("Reports must be a mapping")
     cards = []
-    for name in ("central_research", "small_budget", "forward_attribution", "unified_evidence"):
+    for name in ("central_research", "small_budget", "execution_costs", "forward_attribution", "unified_evidence"):
         report = reports.get(name)
         if report is None:
             cards.append((name, "NOT_AVAILABLE", "No report provided"))
@@ -25,6 +25,7 @@ def build_command_centre(reports):
         details = {
             "central_research": "Assets: " + str(report.get("asset_count", "unknown")) + "; as of: " + str(report.get("as_of_date", "unknown")),
             "small_budget": "Budget scenarios: " + ", ".join(sorted(report.get("budgets", {}))),
+            "execution_costs": "Illustrative scenarios: " + str(len(report.get("scenarios", []))),
             "forward_attribution": "Observed dates: " + str(report.get("observed_dates", 0)),
             "unified_evidence": "Blockers: " + ", ".join(report.get("blockers", [])),
         }
@@ -49,6 +50,7 @@ def load_available_reports(folder="."):
     paths = {
         "central_research": "central_research_cycle.json",
         "small_budget": "small_budget_study.json",
+        "execution_costs": "execution_cost_study.json",
         "forward_attribution": "forward_attribution_report.json",
         "unified_evidence": "portfolio_unified_evidence_review.json",
     }
