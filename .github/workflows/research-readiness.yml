@@ -31,6 +31,8 @@ jobs:
           if [ -n "$forward_id" ]; then
             gh run download "$forward_id" --name project-et-forward-batch-audit --dir inputs/forward || true
           fi
+      - name: Record exact research input provenance
+        run: python readiness_input_provenance.py > readiness_input_provenance_report.json
       - name: Produce conservative readiness result
         run: |
           python - <<'PY'
@@ -79,4 +81,5 @@ jobs:
           path: |
             research_readiness_report.json
             research_readiness_dashboard.html
+            readiness_input_provenance_report.json
           retention-days: 90
