@@ -50,7 +50,12 @@ class BatchAuditTests(unittest.TestCase):
             audit_forward_snapshots([], self.fetch, max_snapshots=0)
 
     def test_caches_one_fetch_per_asset(self):
-        r = run_batch([], self.fetch)
+        import tempfile, json
+        from pathlib import Path
+        with tempfile.TemporaryDirectory() as directory:
+            snapshot_path = Path(directory) / "forward_signal_snapshot.json"
+            snapshot_path.write_text(json.dumps(self.doc()))
+            r = run_batch([snapshot_path], self.fetch)
         self.assertEqual(r["status"], "RESEARCH_AUDIT")
         self.assertEqual(len(self.calls), len(WATCHLIST))
 
