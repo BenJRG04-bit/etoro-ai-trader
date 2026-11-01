@@ -57,7 +57,7 @@ def write_archive(root, run_id, payload):
 
 
 class SelectPatternBatchTests(unittest.TestCase):
-    def run(self, rid, stamp, **changes):
+    def make_row(self, rid, stamp, **changes):
         return {
             "id": rid, "created_at": stamp, "updated_at": stamp,
             "head_branch": "main", "status": "completed",
@@ -66,10 +66,10 @@ class SelectPatternBatchTests(unittest.TestCase):
 
     def test_weekend_maturity_includes_thursday_and_friday(self):
         runs = [
-            self.run(21, "2026-11-09T23:15:00Z"),  # too new
-            self.run(20, "2026-11-06T23:15:00Z"),  # Fri
-            self.run(19, "2026-11-05T23:15:00Z"),  # Thu
-            self.run(18, "2026-11-04T23:15:00Z"),  # Wed
+            self.make_row(21, "2026-11-09T23:15:00Z"),  # too new
+            self.make_row(20, "2026-11-06T23:15:00Z"),  # Fri
+            self.make_row(19, "2026-11-05T23:15:00Z"),  # Thu
+            self.make_row(18, "2026-11-04T23:15:00Z"),  # Wed
         ]
         selected = select_mature_pattern_runs(
             runs, evaluated_at="2026-11-10T03:15:00Z")
@@ -78,10 +78,10 @@ class SelectPatternBatchTests(unittest.TestCase):
 
     def test_not_yet_mature_and_legacy_skipped(self):
         runs = [
-            self.run(1, "2026-10-28T23:00:00Z"),
-            self.run(2, "2026-11-08T23:00:00Z"),
-            self.run(3, "2026-11-04T23:00:00Z", head_branch="topic"),
-            self.run(4, "2026-11-04T23:00:00Z", conclusion="failure"),
+            self.make_row(1, "2026-10-28T23:00:00Z"),
+            self.make_row(2, "2026-11-08T23:00:00Z"),
+            self.make_row(3, "2026-11-04T23:00:00Z", head_branch="topic"),
+            self.make_row(4, "2026-11-04T23:00:00Z", conclusion="failure"),
         ]
         self.assertEqual(select_mature_pattern_runs(
             runs, evaluated_at="2026-11-10T00:00:00Z"), [])
@@ -94,7 +94,7 @@ class SelectPatternBatchTests(unittest.TestCase):
             select_mature_pattern_runs([], evaluated_at="2026-11-10T03:00:00")
 
     def test_returns_newest_mature_limited_batch(self):
-        runs = [self.run(i, f"2026-11-{i:02}T23:00:00Z")
+        runs = [self.make_row(i, f"2026-11-{i:02}T23:00:00Z")
                 for i in (2, 3, 4, 5, 6)]
         self.assertEqual(
             select_mature_pattern_runs(runs, evaluated_at="2026-11-09T03:00:00Z",
