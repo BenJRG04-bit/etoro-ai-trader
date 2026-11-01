@@ -7,15 +7,17 @@ import json
 import sys
 from historical_prices import WATCHLIST, fetch_daily_closes
 from forward_signal_monitor import evaluate_snapshot
+from forward_archive_integrity import validate_archived_snapshot
 
 def run_evaluation(snapshot_document, fetcher=fetch_daily_closes):
     unavailable = {"status": "UNAVAILABLE", "research_only": True,
                    "orders_allowed": False, "live_trading_approved": False}
     if not isinstance(snapshot_document, dict) or snapshot_document.get("status") != "SNAPSHOT_RESEARCH_ONLY":
         return dict(unavailable, error_type="InvalidSnapshot")
-    snap = snapshot_document.get("snapshot")
-    if not isinstance(snap, dict) or set(snap.get("assets", {})) != set(WATCHLIST):
-        return dict(unavailable, error_type="InvalidWatchlist")
+    try:
+        snap = validate_archived_snapshot(snapshot_document)
+    except (ValueError, TypeError, KeyError):
+        return dict(unavailable, error_type="InvalidArchivedSnapshot")
     histories = {}
     for ticker in WATCHLIST:
         try:
