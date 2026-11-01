@@ -32,6 +32,8 @@ jobs:
         run: python run_council_history.py archived_council > council_history_report.json
       - name: Build offline history dashboard
         run: python publish_council_history.py
+      - name: Validate research artifact contracts
+        run: python validate_report_artifacts.py council_history_report.json council_history_quality.json
       - uses: actions/upload-artifact@v4
         with:
           name: project-et-council-history
