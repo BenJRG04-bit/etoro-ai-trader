@@ -4,6 +4,7 @@ A single £100 hypothetical account, maximum 5% TOTAL exposure, equal weights
 among positive council signals. Signals use only closes available at decision time.
 """
 from math import isfinite
+from profit_protection_audit import audit_equity_curve
 from capital_guard import CapitalGuard
 from regime_council import regime_aware_council
 
@@ -76,6 +77,7 @@ def simulate_portfolio(price_series, starting_cash=100.0, fee_rate=0.001,
         "end_equity": round(equity, 4),
         "return_fraction": round(equity / starting_cash - 1, 6),
         "max_drawdown_fraction": round(max_drawdown, 6),
+        "profit_protection_audit": audit_equity_curve(curve),
         "rebalance_events": rebalances,
         "max_observed_total_allocation": round(max_observed_allocation, 6),
         "max_total_allocation": max_total_allocation,
