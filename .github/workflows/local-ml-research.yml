@@ -1,0 +1,54 @@
+name: Project ET local machine learning research (free, no orders)
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '45 23 * * 1-5'
+  push:
+    paths:
+      - 'local_ml_research.py'
+      - 'tests/test_local_ml_research.py'
+      - '.github/workflows/local-ml-research.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: project-et-local-ml-research
+  cancel-in-progress: false
+
+jobs:
+  offline-local-ml:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Run all offline safety tests
+        run: python -m unittest discover -s tests -v
+      - name: Train and evaluate free local model with public closes
+        run: python local_ml_research.py > local_ml_research_report.json
+      - name: Verify safety and show measured holdout results
+        run: |
+          python - <<'PY'
+          import json
+          with open("local_ml_research_report.json") as f:
+              report = json.load(f)
+          assert report["orders_allowed"] is False
+          assert report["external_ai_api_calls"] == 0
+          for ticker, row in report["assets"].items():
+              assert row["orders_allowed"] is False
+              print(ticker, row["status"],
+                    "holdout accuracy", row.get("holdout_accuracy"),
+                    "baseline", row.get("majority_class_baseline_accuracy"))
+          print("NO BROKER ORDERS; NO PAID AI API")
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: project-et-local-ml-research
+          path: local_ml_research_report.json
+          if-no-files-found: warn
+          retention-days: 90
