@@ -37,7 +37,7 @@ def review_evidence(performance, stress):
                 "benchmark_max_drawdown_fraction": benchmark["max_drawdown_fraction"],
                 "council_worst_synthetic_drawdown_fraction": stressed["council_guarded"]["worst_scenario_drawdown_fraction"],
                 "benchmark_worst_synthetic_drawdown_fraction": stressed["equal_weight_capped_hold"]["worst_scenario_drawdown_fraction"],
-                "council_any_capital_guard_halt": stressed[fee]["council_guarded"]["any_capital_guard_halt"],
+                "council_any_capital_guard_halt": stressed["council_guarded"]["any_capital_guard_halt"],
             }
     blockers.append("NO_INDEPENDENT_FORWARD_PROFITABILITY_EVIDENCE")
     return {**flags, "status": "MORE_EVIDENCE_REQUIRED", "blockers": blockers,
