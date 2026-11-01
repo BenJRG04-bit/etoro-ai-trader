@@ -1,6 +1,8 @@
 name: Project ET council history report
 on:
   workflow_dispatch:
+  schedule:
+    - cron: '30 5 * * 2-6'
 permissions:
   contents: read
   actions: read
@@ -29,11 +31,12 @@ jobs:
       - name: Build archived decision history
         run: python run_council_history.py archived_council > council_history_report.json
       - name: Build offline history dashboard
-        run: python council_history_dashboard.py
+        run: python publish_council_history.py
       - uses: actions/upload-artifact@v4
         with:
           name: project-et-council-history
           path: |
             council_history_report.json
             council_history_dashboard.html
+            council_history_quality.json
           retention-days: 90
