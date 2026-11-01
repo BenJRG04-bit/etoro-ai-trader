@@ -1,6 +1,7 @@
 """No-key unit tests for fail-closed AI adviser and prompt-injection resistance."""
 import copy
 import json
+from urllib.error import HTTPError
 import unittest
 from datetime import datetime, timezone
 
@@ -119,6 +120,27 @@ class OpenAIResearchAdviserTests(unittest.TestCase):
                                        "status": "incomplete", "output": []},
                                    now_utc=self.now)
         self.assertEqual(result["status"], "UNAVAILABLE")
+
+    def test_http_401_is_safe_and_identifies_authentication(self):
+        def rejected(*args):
+            raise HTTPError("https://api.openai.com/v1/responses", 401,
+                            "PRIVATE SECRET RESPONSE", {}, None)
+        result = run_openai_adviser(report(), api_key="private-secret",
+                                   transport=rejected, now_utc=self.now)
+        self.assertEqual(result["status"], "UNAVAILABLE")
+        self.assertEqual(result["diagnostic"], {
+            "stage": "OPENAI_REQUEST", "category": "AUTHENTICATION",
+            "http_status": 401})
+        self.assertNotIn("private-secret", json.dumps(result))
+        self.assertNotIn("PRIVATE SECRET RESPONSE", json.dumps(result))
+
+    def test_invalid_ai_response_reports_validation_stage(self):
+        result = run_openai_adviser(report(), api_key="fake",
+                                   transport=lambda *_: {"status": "incomplete"},
+                                   now_utc=self.now)
+        self.assertEqual(result["diagnostic"]["stage"], "RESPONSE_VALIDATION")
+        self.assertEqual(result["diagnostic"]["category"],
+                         "INVALID_INPUT_OR_RESPONSE")
 
     def test_network_error_fails_closed(self):
         def offline(*args):
