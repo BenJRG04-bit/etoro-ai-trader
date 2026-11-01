@@ -69,6 +69,8 @@ jobs:
           for key in ("snapshot_count","observed_snapshots","pending_snapshots","unavailable_snapshots","rejected_snapshots"):
               if key in r: print(key,r[key])
           PY
+      - name: Summarize independent forward coverage and integrity
+        run: python run_forward_coverage_monitor.py forward_batch_audit_report.json
       - name: Summarize evidence quality and minimum sample counts
         run: python run_forward_evidence_quality.py forward_batch_audit_report.json > forward_evidence_quality_report.json
       - name: Compare observed signals with a descriptive same-date market baseline
@@ -108,4 +110,5 @@ jobs:
             forward_archive_health_report.json
             forward_baseline_comparison.json
             forward_attribution_report.json
+            forward_coverage_monitor.json
           retention-days: 90
