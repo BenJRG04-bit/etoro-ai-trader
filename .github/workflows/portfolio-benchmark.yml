@@ -4,6 +4,8 @@ on:
     paths:
       - 'portfolio_benchmark.py'
       - 'portfolio_performance_scorecard.py'
+      - 'portfolio_stress_scenarios.py'
+      - 'tests/test_portfolio_stress_scenarios.py'
       - 'tests/test_portfolio_performance_scorecard.py'
       - 'run_portfolio_benchmark.py'
       - 'tests/test_portfolio_benchmark.py'
@@ -37,6 +39,24 @@ jobs:
           PY
       - name: Build historical performance scorecard
         run: python portfolio_performance_scorecard.py
+      - name: Build synthetic shock stress report when public prices are available
+        run: |
+          python - <<'PY'
+          import json
+          from historical_prices import WATCHLIST, fetch_daily_closes
+          from portfolio_stress_scenarios import stress_audit
+          from pathlib import Path
+          try:
+              histories = [fetch_daily_closes(t, period='2y') for t in WATCHLIST]
+              dates = histories[0]['dates']
+              if any(row['dates'] != dates for row in histories):
+                  raise ValueError('DateMisalignment')
+              result = stress_audit({row['ticker']: row['closes'] for row in histories})
+          except (ValueError, TypeError, KeyError, IndexError, OSError) as exc:
+              result = {'status': 'UNAVAILABLE', 'error_type': type(exc).__name__, 'research_only': True, 'orders_allowed': False, 'live_trading_approved': False}
+          Path('portfolio_stress_report.json').write_text(json.dumps(result, indent=2))
+          print(result['status'])
+          PY
       - name: Archive offline report
         uses: actions/upload-artifact@v4
         with:
@@ -44,4 +64,5 @@ jobs:
           path: |
             portfolio_benchmark_report.json
             portfolio_performance_scorecard.json
+            portfolio_stress_report.json
           retention-days: 30
