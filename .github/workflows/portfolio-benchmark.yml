@@ -5,6 +5,8 @@ on:
       - 'portfolio_benchmark.py'
       - 'portfolio_performance_scorecard.py'
       - 'portfolio_stress_scenarios.py'
+      - 'portfolio_stress_resilience.py'
+      - 'tests/test_portfolio_stress_resilience.py'
       - 'tests/test_portfolio_stress_scenarios.py'
       - 'tests/test_portfolio_performance_scorecard.py'
       - 'run_portfolio_benchmark.py'
@@ -57,6 +59,8 @@ jobs:
           Path('portfolio_stress_report.json').write_text(json.dumps(result, indent=2))
           print(result['status'])
           PY
+      - name: Cross-check synthetic stress resilience and exposure limits
+        run: python portfolio_stress_resilience.py
       - name: Archive offline report
         uses: actions/upload-artifact@v4
         with:
@@ -65,4 +69,5 @@ jobs:
             portfolio_benchmark_report.json
             portfolio_performance_scorecard.json
             portfolio_stress_report.json
+            portfolio_stress_resilience.json
           retention-days: 30
