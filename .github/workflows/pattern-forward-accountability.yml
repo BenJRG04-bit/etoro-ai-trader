@@ -64,10 +64,11 @@ jobs:
                    "--dir", str(target)],
                   capture_output=True, text=True
               )
-              if result.returncode != 0 or not (target / "pattern_forward_evaluation.json").exists():
+              files = list(target.rglob("pattern_forward_evaluation.json"))
+              if result.returncode != 0 or not files:
                   unavailable.append(run_id)
               else:
-                  available.append(run_id)
+                  available.extend(files)
           manifest = {
               "expected_runs": len(ids),
               "downloaded": len(available),
@@ -76,7 +77,7 @@ jobs:
           (outdir / "manifest.json").write_text(
               json.dumps(manifest, indent=2), encoding="utf-8"
           )
-          print("Archived reports found:", len(available))
+          print("Individual forward outcome reports found:", len(available))
           print("Unrecoverable archived reports:", len(unavailable))
           PY
       - name: Score all available frozen patterns, including missed opportunities
