@@ -1,0 +1,2 @@
+One-time research-only evidence aggregation smoke trigger.
+Runs archived council history and cumulative forward audit from actual GitHub Actions artifacts. Readiness re-evaluates after each upstream workflow completes. Missing or duplicate observations remain insufficient evidence. No trading permission.
