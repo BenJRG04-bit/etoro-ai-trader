@@ -1,0 +1,22 @@
+name: eToro read-only connection diagnostics
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  connection-diagnostics:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Check real and demo reads (GET only, no account data logged)
+        env:
+          ETORO_API_KEY: ${{ secrets.ETORO_PUBLIC_KEY }}
+          ETORO_USER_KEY: ${{ secrets.ETORO_USER_KEY }}
+        run: python tools/check_etoro_account_read_access.py
