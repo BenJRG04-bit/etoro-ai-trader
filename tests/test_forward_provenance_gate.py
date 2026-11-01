@@ -6,7 +6,7 @@ SAFE = {"research_only": True, "orders_allowed": False, "live_trading_approved":
 
 class ProvenanceGateTests(unittest.TestCase):
     def doc(self, day):
-        return {"status": "SNAPSHOT_RESEARCH_ONLY", "snapshot": {"snapshot_date": day}, **SAFE}
+        return {"status": "SNAPSHOT_RESEARCH_ONLY", "snapshot": {"snapshot_date": day, **SAFE}, **SAFE}
     def test_old_snapshot_eligible(self):
         result = check_snapshot_provenance(self.doc("2026-10-01"), observed_at=date(2026, 10, 3))
         self.assertEqual(result["status"], "ELIGIBLE_FOR_FORWARD_EVALUATION")
