@@ -1,0 +1,64 @@
+name: Project ET nightly pattern research (no orders)
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '15 23 * * 1-5'
+  push:
+    paths:
+      - 'pattern_recognition.py'
+      - 'pattern_strategy_evaluation.py'
+      - 'run_pattern_research.py'
+      - 'tests/test_pattern_recognition.py'
+      - '.github/workflows/pattern-research.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: project-et-readonly-pattern-research
+  cancel-in-progress: false
+
+jobs:
+  pattern-research:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Verify all offline safety and research tests
+        run: python -m unittest discover -s tests -v
+      - name: Classify daily price patterns and evaluate fixed policies
+        run: python run_pattern_research.py > pattern_research_report.json
+      - name: Show research-only outcome summary
+        run: |
+          python - <<'PY'
+          import json
+          with open("pattern_research_report.json", encoding="utf-8") as f:
+              report = json.load(f)
+          assert report["orders_allowed"] is False
+          assert report["live_trading_approved"] is False
+          assert report["demo_trading_approved"] is False
+          for symbol, row in report["assets"].items():
+              status = row["status"]
+              signal = row.get("latest_pattern", {}).get("signal", "NO_CANDIDATE")
+              if status != "EXPLORATORY_ONLY":
+                  signal = "NO_CANDIDATE"
+              if "historical_comparison" in row:
+                  scenario = row["historical_comparison"]["segments"]["later_holdout"]["scenarios"]["0.005"]
+                  beat = scenario["pattern_beat_capped_hold"]
+                  print(f"{symbol}: {status}, historical pattern={signal}, later matched holding beaten after fees+slippage={beat}")
+              else:
+                  print(f"{symbol}: {status}; no historical evaluation")
+          print("ALL LABELS RESEARCH ONLY. NO BROKER ACCESS. NO ORDERS.")
+          PY
+      - name: Store immutable research output
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: project-et-pattern-research
+          path: pattern_research_report.json
+          if-no-files-found: warn
+          retention-days: 90
