@@ -54,8 +54,23 @@ jobs:
           for key in ("snapshot_count","observed_snapshots","pending_snapshots","unavailable_snapshots","rejected_snapshots"):
               if key in r: print(key,r[key])
           PY
+      - name: Summarize evidence quality and minimum sample counts
+        run: python run_forward_evidence_quality.py forward_batch_audit_report.json > forward_evidence_quality_report.json
+      - name: Print evidence status
+        run: |
+          python - <<'PY'
+          import json
+          r=json.load(open('forward_evidence_quality_report.json'))
+          print('Forward evidence status:',r['status'])
+          print('Observed snapshot dates:',r.get('observed_snapshot_dates',0))
+          for policy,assets in r.get('policies',{}).items():
+              for ticker,entry in assets.items():
+                  print(policy,ticker,'signals:',entry['signals'],'minimum evidence met:',entry['minimum_evidence_met'])
+          PY
       - uses: actions/upload-artifact@v4
         with:
           name: project-et-forward-batch-audit
-          path: forward_batch_audit_report.json
+          path: |
+            forward_batch_audit_report.json
+            forward_evidence_quality_report.json
           retention-days: 90
