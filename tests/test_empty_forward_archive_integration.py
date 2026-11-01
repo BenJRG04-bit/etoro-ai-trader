@@ -1,7 +1,6 @@
 import unittest
 from unittest.mock import Mock
 from run_forward_batch_audit import run_batch
-from forward_evidence_quality import assess_forward_evidence_quality
 
 class EmptyForwardArchiveIntegrationTests(unittest.TestCase):
     def test_empty_archive_returns_safe_audit_without_network(self):
