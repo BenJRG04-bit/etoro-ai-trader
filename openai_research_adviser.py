@@ -240,12 +240,30 @@ def build_openai_request(assets, *, model=DEFAULT_MODEL):
     }
 
 
+def _safe_failure(exc, stage):
+    """Fixed codes only; never log API response bodies or credentials."""
+    if isinstance(exc, error.HTTPError):
+        code = exc.code
+        category = {400: "INVALID_REQUEST", 401: "AUTHENTICATION",
+                    403: "ACCESS_DENIED", 404: "MODEL_OR_ENDPOINT_NOT_FOUND",
+                    429: "RATE_LIMIT_OR_QUOTA", 500: "SERVER_ERROR",
+                    502: "SERVER_ERROR", 503: "SERVER_ERROR",
+                    504: "SERVER_ERROR"}.get(code, "HTTP_ERROR")
+        return {"stage": stage, "category": category, "http_status": code}
+    if isinstance(exc, (error.URLError, TimeoutError, OSError)):
+        category = "NETWORK_ERROR"
+    else:
+        category = "INVALID_INPUT_OR_RESPONSE"
+    return {"stage": stage, "category": category, "http_status": None}
+
+
 def run_openai_adviser(report, *, api_key=None, model=DEFAULT_MODEL,
                       transport=None, now_utc=None):
     now = datetime.now(timezone.utc) if now_utc is None else now_utc
     base = {**SAFE, "status": "UNAVAILABLE", "model": model,
             "assessments": [], "overall_caution": "No AI opinion available.",
             "generated_at_utc": now.astimezone(timezone.utc).isoformat()}
+    stage = "INPUT_VALIDATION"
     try:
         if not isinstance(now, datetime) or now.tzinfo is None:
             raise ValueError("Invalid UTC time")
@@ -266,7 +284,9 @@ def run_openai_adviser(report, *, api_key=None, model=DEFAULT_MODEL,
                     if response.status != 200:
                         raise ValueError("OpenAI returned non-200 status")
                     return json.loads(response.read(90000).decode("utf-8"))
+        stage = "OPENAI_REQUEST"
         model_response = transport(payload, key)
+        stage = "RESPONSE_VALIDATION"
         clean = _validate_output(model_response, assets)
         return {**base, "status": "RESEARCH_ONLY", **clean,
                 "limitations": (
@@ -276,8 +296,9 @@ def run_openai_adviser(report, *, api_key=None, model=DEFAULT_MODEL,
                     "financial advice or trading approval. No auto-parameter tuning."
                 )}
     except (ValueError, TypeError, KeyError, IndexError, OSError,
-            TimeoutError, error.HTTPError, error.URLError):
-        return {**base, "status": "UNAVAILABLE"}
+            TimeoutError, error.HTTPError, error.URLError) as exc:
+        return {**base, "status": "UNAVAILABLE",
+                "diagnostic": _safe_failure(exc, stage)}
 
 
 if __name__ == "__main__":
