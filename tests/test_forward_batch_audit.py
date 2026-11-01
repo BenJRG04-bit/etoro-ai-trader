@@ -11,7 +11,7 @@ class BatchAuditTests(unittest.TestCase):
         return {"status": "SNAPSHOT_RESEARCH_ONLY",
                 "snapshot": {"schema_version": 1, "research_only": True,
                              "snapshot_date": self.dates[index],
-                             "assets": {t: {"close": 100., "original_positive": True,
+                             "assets": {t: {"close": 101. if index == 69 else 100., "original_positive": True,
                                            "confirmed_positive": False, "risk_veto": False}
                                         for t in WATCHLIST}}}
     def fetch(self, ticker, period="2y"):
