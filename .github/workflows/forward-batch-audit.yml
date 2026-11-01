@@ -3,6 +3,10 @@ on:
   schedule:
     - cron: '35 2 * * 2-6'
   workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/research-chain-bootstrap.txt'
 permissions:
   actions: read
   contents: read

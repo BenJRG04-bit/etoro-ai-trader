@@ -1,6 +1,12 @@
 name: Project ET end-to-end research readiness
 on:
   workflow_dispatch:
+  workflow_run:
+    workflows:
+      - 'Project ET council history report'
+      - 'Project ET cumulative forward research audit'
+    types: [completed]
+    branches: [main]
   push:
     branches: [main]
     paths:
