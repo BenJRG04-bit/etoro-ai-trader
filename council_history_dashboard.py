@@ -52,7 +52,7 @@ def render_council_history_dashboard(report):
                 raise ValueError("Unknown daily status")
             day_rows.append("<tr>" + "".join("<td>" + esc(v) + "</td>" for v in
                 (day["date"], ticker, decision, confirmed, veto)) + "</tr>")
-    return """<!doctype html><html lang="en"><head><meta charset="utf-8">
+    return ("""<!doctype html><html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Project E.T. | Decision History</title>
 <style>:root{color-scheme:dark}body{background:#101928;color:#edf4ff;font:16px system-ui,sans-serif;padding:24px;line-height:1.5}
@@ -75,7 +75,7 @@ th{color:#a9d3ff}small{color:#c5d5ed}</style></head><body><main>
 <th>Original</th><th>Confirmed</th><th>Risk veto</th></tr></thead><tbody>""" +
         "".join(day_rows) + """</tbody></table></section>
 <footer><small>Offline HTML, no JavaScript, no external assets, no brokerage access.</small></footer>
-</main></body></html>"""
+</main></body></html>""")
 
 def build_council_history_dashboard(directory=".", output="council_history_dashboard.html"):
     root = Path(directory)
