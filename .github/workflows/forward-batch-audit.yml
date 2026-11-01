@@ -67,10 +67,13 @@ jobs:
               for ticker,entry in assets.items():
                   print(policy,ticker,'signals:',entry['signals'],'minimum evidence met:',entry['minimum_evidence_met'])
           PY
+      - name: Build offline forward evidence dashboard
+        run: python forward_evidence_dashboard.py
       - uses: actions/upload-artifact@v4
         with:
           name: project-et-forward-batch-audit
           path: |
             forward_batch_audit_report.json
             forward_evidence_quality_report.json
+            forward_evidence_dashboard.html
           retention-days: 90
