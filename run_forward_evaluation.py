@@ -8,6 +8,7 @@ import sys
 from historical_prices import WATCHLIST, fetch_daily_closes
 from forward_signal_monitor import evaluate_snapshot
 from forward_archive_integrity import validate_archived_snapshot
+from forward_provenance_gate import check_snapshot_provenance
 
 def run_evaluation(snapshot_document, fetcher=fetch_daily_closes):
     unavailable = {"status": "UNAVAILABLE", "research_only": True,
@@ -18,6 +19,13 @@ def run_evaluation(snapshot_document, fetcher=fetch_daily_closes):
         snap = validate_archived_snapshot(snapshot_document)
     except (ValueError, TypeError, KeyError):
         return dict(unavailable, error_type="InvalidArchivedSnapshot")
+    try:
+        provenance = check_snapshot_provenance(snapshot_document)
+    except (ValueError, TypeError):
+        return dict(unavailable, error_type='InvalidSnapshotProvenance')
+    if provenance['status'] != 'ELIGIBLE_FOR_FORWARD_EVALUATION':
+        return {'status': 'PENDING', 'reason': provenance['reason'],
+                'research_only': True, 'orders_allowed': False, 'live_trading_approved': False}
     histories = {}
     for ticker in WATCHLIST:
         try:
