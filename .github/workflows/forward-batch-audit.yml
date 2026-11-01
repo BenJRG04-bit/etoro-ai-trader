@@ -7,6 +7,8 @@ on:
     branches: [main]
     paths:
       - '.github/research-chain-bootstrap.txt'
+      - 'forward_attribution.py'
+      - 'tests/test_forward_attribution.py'
 permissions:
   actions: read
   contents: read
@@ -71,6 +73,8 @@ jobs:
         run: python run_forward_evidence_quality.py forward_batch_audit_report.json > forward_evidence_quality_report.json
       - name: Compare observed signals with a descriptive same-date market baseline
         run: python forward_baseline_comparison.py
+      - name: Attribute forward signals to observed subsequent closes
+        run: python forward_attribution.py
       - name: Print evidence status
         run: |
           python - <<'PY'
@@ -103,4 +107,5 @@ jobs:
             forward_evidence_dashboard.html
             forward_archive_health_report.json
             forward_baseline_comparison.json
+            forward_attribution_report.json
           retention-days: 90
