@@ -1,7 +1,8 @@
-"""Select the newest completed prior snapshot run, not blindly the second run.
+"""Select an archived snapshot old enough for the next market close.
 
-The evaluator's run is not a snapshot run. Selecting index 1 incorrectly
-skips the newest available archived snapshot and can delay forward evidence.
+The newest snapshot can still be waiting for a later close. Prefer the
+previous completed snapshot when available, without assuming a second run
+exists. The downstream evaluator independently checks newer close dates.
 """
 from datetime import datetime, timezone
 
@@ -31,4 +32,8 @@ def select_prior_snapshot_run(runs, *, evaluation_started_at):
             continue
         if completed < cutoff:
             eligible.append((completed, run_id))
-    return max(eligible)[1] if eligible else None
+    eligible.sort(reverse=True)
+    # With two or more snapshots, evaluate the previous completed run so
+    # each daily cycle can observe a newer close. With only one, return it;
+    # downstream evaluation reports PENDING until a later close exists.
+    return eligible[1][1] if len(eligible) >= 2 else (eligible[0][1] if eligible else None)
