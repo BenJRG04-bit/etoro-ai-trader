@@ -8,14 +8,16 @@ class WorkflowDiscoveryIntegrationTests(unittest.TestCase):
         urls = []
         def fetch(url, headers):
             urls.append(url)
+            if "/actions/runs/" in url:
+                return {"artifacts": []}
             filename = url.split("/workflows/")[1].split("/runs")[0]
             return {"workflow_runs": [{"id": 10, "created_at": "2026-11-01T00:00:00Z",
                 "head_branch": "main", "status": "completed", "conclusion": "success",
                 "event": "schedule"}]}
         result = run_diagnostics("owner/repo", "test-token", fetch=fetch)
-        self.assertEqual(len(urls), len(WORKFLOWS))
-        self.assertTrue(all("/actions/workflows/" in url for url in urls))
-        self.assertTrue(all("/runs?branch=main" in url for url in urls))
+        self.assertEqual(len([url for url in urls if "/actions/workflows/" in url]), len(WORKFLOWS))
+        self.assertTrue(any("/actions/workflows/" in url for url in urls))
+        self.assertTrue(all("/runs?branch=main" in url for url in urls if "/actions/workflows/" in url))
         self.assertEqual(set(result["workflows"]), set(WORKFLOWS.values()))
 
     def test_one_api_failure_blocks_health_and_renders(self):

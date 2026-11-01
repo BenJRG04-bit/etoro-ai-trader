@@ -3,6 +3,7 @@ import json
 import os
 import urllib.request
 from workflow_run_diagnostics import WORKFLOWS, summarize_workflow_runs
+from pipeline_artifact_verification import verify_pipeline_artifacts
 
 def run_diagnostics(repo, token, fetch=None):
     if not isinstance(repo, str) or len(repo.split("/")) != 2 or not all(repo.split("/")) or not token:
@@ -34,7 +35,7 @@ def run_diagnostics(repo, token, fetch=None):
         report["workflows"][label] = {"status": "FETCH_ERROR", "workflow": next(k for k, v in WORKFLOWS.items() if v == label), "error_type": error}
     report["blockers"] = [label for label, item in report["workflows"].items() if item["status"] != "SUCCESS"]
     report["status"] = "WORKFLOW_VERIFICATION_INCOMPLETE" if report["blockers"] else "WORKFLOW_RUNS_PRESENT"
-    return report
+    return verify_pipeline_artifacts(report, fetch, repo, headers)
 
 if __name__ == "__main__":
     print(json.dumps(run_diagnostics(os.environ["GH_REPO"], os.environ["GH_TOKEN"]), indent=2))
