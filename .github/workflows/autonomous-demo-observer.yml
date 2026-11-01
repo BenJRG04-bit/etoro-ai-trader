@@ -1,0 +1,45 @@
+name: Project ET autonomous demo observer (no orders)
+on:
+  schedule:
+    - cron: '17 * * * *'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: project-et-observer
+  cancel-in-progress: false
+jobs:
+  observer:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      ETORO_API_KEY: ${{ secrets.ETORO_API_KEY }}
+      ETORO_USER_KEY: ${{ secrets.ETORO_USER_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify demo-only guardrails and connectivity without placing orders
+        shell: bash
+        run: |
+          python - <<'PY'
+          import os, urllib.request, urllib.error, uuid
+          print("MODE: DEMO_OBSERVER_ONLY")
+          print("ORDER_EXECUTION: DISABLED")
+          if not os.getenv("ETORO_API_KEY") or not os.getenv("ETORO_USER_KEY"):
+              raise SystemExit("MISSING_SECRETS: set ETORO_API_KEY and ETORO_USER_KEY")
+          req = urllib.request.Request(
+              "https://public-api.etoro.com/api/v1/market-data/search?internalSymbolFull=AAPL",
+              headers={"x-api-key": os.environ["ETORO_API_KEY"],
+                       "x-user-key": os.environ["ETORO_USER_KEY"],
+                       "x-request-id": str(uuid.uuid4()),
+                       "Accept": "application/json"})
+          try:
+              with urllib.request.urlopen(req, timeout=20) as resp:
+                  print("AUTH_HTTP_STATUS:", resp.status)
+          except urllib.error.HTTPError as e:
+              print("AUTH_HTTP_STATUS:", e.code)
+              raise SystemExit("AUTH_NOT_VERIFIED")
+          except Exception as e:
+              print("NETWORK_ERROR_TYPE:", type(e).__name__)
+              raise SystemExit("NETWORK_FAILURE")
+          print("NEXT_GATE: Verify account is demo before enabling demo orders")
+          PY
