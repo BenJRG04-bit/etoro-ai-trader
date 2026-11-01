@@ -1,0 +1,31 @@
+name: Project ET unified research command centre
+on:
+  schedule:
+    - cron: '55 8 * * 2-6'
+  workflow_dispatch:
+  push:
+    paths:
+      - 'research_command_centre.py'
+      - 'tests/test_research_command_centre.py'
+      - '.github/workflows/research-command-centre.yml'
+permissions:
+  contents: read
+  actions: read
+jobs:
+  dashboard:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Offline tests
+        run: python -m unittest discover -s tests -v
+      - name: Build offline research dashboard
+        run: python research_command_centre.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: project-et-command-centre
+          path: project_et_command_centre.html
+          retention-days: 30
