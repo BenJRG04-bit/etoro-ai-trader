@@ -26,14 +26,17 @@ def render_pipeline_dashboard(report):
         status = item.get("status")
         if status not in ("SUCCESS", "NO_RUN_FOUND", "INCOMPLETE_OR_FAILED", "STALE_RUN", "FETCH_ERROR"):
             raise ValueError("Unknown workflow state")
-        if status != "SUCCESS":
+        artifact = item.get("artifact_status")
+        if artifact is not None and artifact not in ("PRESENT", "NOT_CHECKED", "MISSING_OR_EXPIRED", "FETCH_ERROR", "INVALID_RUN_ID"):
+            raise ValueError("Invalid artifact status")
+        if status != "SUCCESS" or (artifact is not None and artifact != "PRESENT"):
             actual_blockers.append(label)
         age = item.get("age_hours", "—")
         if type(age) not in (float, int, str) or (isinstance(age, (float, int)) and age < 0):
             raise ValueError("Invalid workflow age")
         rows.append("<tr><td>" + escape(label.replace("_", " ").title()) +
                     "</td><td>" + escape(status) + "</td><td>" + escape(age) +
-                    "</td><td>" + escape(item.get("conclusion", "—")) + "</td></tr>")
+                    "</td><td>" + escape(item.get("conclusion", "—")) + "</td><td>" + escape(artifact if artifact is not None else "NOT_CHECKED") + "</td></tr>")
     if blockers != actual_blockers:
         raise ValueError("Inconsistent blockers")
     if (report["status"] == "WORKFLOW_RUNS_PRESENT") != (not blockers):
@@ -51,7 +54,7 @@ table{width:100%;border-collapse:collapse}th,td{padding:12px;text-align:left;bor
 A successful workflow does not prove accurate predictions or profitable strategies.</p>
 <section><h2>Execution status: """ + escape(report["status"]) + """</h2>
 <p>Unverified workflows: """ + escape(len(blockers)) + """ of """ + escape(len(WORKFLOWS)) + """</p></section>
-<section class="scroll"><table><thead><tr><th>Workflow</th><th>Status</th><th>Age (hours)</th><th>Conclusion</th></tr></thead>
+<section class="scroll"><table><thead><tr><th>Workflow</th><th>Status</th><th>Age (hours)</th><th>Conclusion</th><th>Artifact</th></tr></thead>
 <tbody>""" + "".join(rows) + """</tbody></table></section>
 <small>Based on GitHub Actions metadata, not market outcomes. Static HTML with no scripts or external resources.</small>
 </main></body></html>"""
