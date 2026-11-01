@@ -1,0 +1,32 @@
+name: Project ET small-budget portfolio research
+on:
+  schedule:
+    - cron: '40 4 * * 2-6'
+  workflow_dispatch:
+  push:
+    paths:
+      - 'small_budget_study.py'
+      - 'tests/test_small_budget_study.py'
+      - '.github/workflows/small-budget-study.yml'
+permissions:
+  contents: read
+jobs:
+  research:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Offline tests
+        run: python -m unittest discover -s tests -v
+      - name: Research small starting budgets
+        run: python small_budget_study.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: project-et-small-budget-study
+          path: small_budget_study.json
+          if-no-files-found: warn
+          retention-days: 30
