@@ -3,6 +3,8 @@ on:
   push:
     paths:
       - 'portfolio_benchmark.py'
+      - 'portfolio_performance_scorecard.py'
+      - 'tests/test_portfolio_performance_scorecard.py'
       - 'run_portfolio_benchmark.py'
       - 'tests/test_portfolio_benchmark.py'
       - '.github/workflows/portfolio-benchmark.yml'
@@ -33,9 +35,13 @@ jobs:
               for fee, row in report["comparison"]["scenarios"].items():
                   print(f"fee={fee}: council £{row['council_guarded']['end_equity']:.2f}, capped hold £{row['equal_weight_capped_hold']['end_equity']:.2f}, difference £{row['council_minus_hold']:.2f}")
           PY
+      - name: Build historical performance scorecard
+        run: python portfolio_performance_scorecard.py
       - name: Archive offline report
         uses: actions/upload-artifact@v4
         with:
           name: project-et-portfolio-benchmark
-          path: portfolio_benchmark_report.json
+          path: |
+            portfolio_benchmark_report.json
+            portfolio_performance_scorecard.json
           retention-days: 30
