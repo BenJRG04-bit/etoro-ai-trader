@@ -25,6 +25,9 @@ def simulate_portfolio(price_series, starting_cash=100.0, fee_rate=0.001,
         raise ValueError('Invalid execution friction assumptions')
     if any(x >= 1 for x in (spread_rate, slippage_rate, fx_rate)):
         raise ValueError('Invalid execution friction rate')
+    combined_cost_rate = fee_rate + spread_rate / 2 + slippage_rate + fx_rate
+    if combined_cost_rate >= 1:
+        raise ValueError('Combined friction would exceed full turnover value')
     symbols = sorted(price_series)
     n = len(price_series[symbols[0]])
     if n < 62:
@@ -64,9 +67,18 @@ def simulate_portfolio(price_series, starting_cash=100.0, fee_rate=0.001,
                 change = abs(desired[ticker] - allocations[ticker]) * equity
                 if change > 1e-12 and change < minimum_order:
                     desired[ticker] = allocations[ticker]
+        # A skipped minimum-size sale can leave retained exposure in place.
+        # Never add buys on top of retained positions if that would breach
+        # the strict aggregate exposure cap; conservative sells remain allowed.
+        if sum(desired.values()) > max_total_allocation + 1e-12:
+            for ticker in symbols:
+                if desired[ticker] > allocations[ticker]:
+                    desired[ticker] = allocations[ticker]
+        if sum(desired.values()) > max_total_allocation + 1e-12:
+            raise ValueError('Allocation cap invariant violated')
         turnover = sum(abs(desired[ticker] - allocations[ticker]) for ticker in symbols)
         if turnover > 1e-12:
-            equity *= (1 - (fee_rate + spread_rate / 2 + slippage_rate + fx_rate) * turnover)
+            equity *= (1 - combined_cost_rate * turnover)
             rebalances += 1
         allocations = desired
         max_observed_allocation = max(max_observed_allocation, sum(allocations.values()))
