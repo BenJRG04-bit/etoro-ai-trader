@@ -6,8 +6,8 @@ from datetime import datetime, timezone
 
 WATCHLIST = ("AAPL", "MSFT", "NVDA", "SPY", "VTI")
 
-def fetch_daily_closes(ticker, period="2y", opener=None):
-    if ticker not in WATCHLIST:
+def fetch_daily_closes(ticker, period="2y", opener=None, *, allowed_tickers=None):
+    if ticker not in (WATCHLIST if allowed_tickers is None else allowed_tickers):
         raise ValueError("Ticker is not in the research watchlist")
     if period not in ("1y", "2y", "5y"):
         raise ValueError("Unsupported history period")
