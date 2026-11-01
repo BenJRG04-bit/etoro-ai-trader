@@ -1,0 +1,59 @@
+name: Project ET end-to-end research readiness
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '15 7 * * 2-6'
+permissions:
+  contents: read
+  actions: read
+jobs:
+  readiness:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Run offline tests
+        run: python -m unittest discover -s tests -v
+      - name: Retrieve latest completed read-only research artifacts
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          mkdir -p inputs/history inputs/forward
+          history_id=$(gh run list --workflow council-history.yml --status success --limit 1 --json databaseId --jq '.[0].databaseId')
+          forward_id=$(gh run list --workflow forward-batch-audit.yml --status success --limit 1 --json databaseId --jq '.[0].databaseId')
+          if [ -n "$history_id" ]; then
+            gh run download "$history_id" --name project-et-council-history --dir inputs/history || true
+          fi
+          if [ -n "$forward_id" ]; then
+            gh run download "$forward_id" --name project-et-forward-batch-audit --dir inputs/forward || true
+          fi
+      - name: Produce conservative readiness result
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          from research_readiness import assess_research_readiness
+          base = Path("inputs")
+          try:
+              def read(path):
+                  return json.loads(path.read_text(encoding="utf-8"))
+              history = read(base / "history/council_history_report.json")
+              audit = read(base / "forward/forward_batch_audit_report.json")
+              evidence = read(base / "forward/forward_evidence_quality_report.json")
+              report = assess_research_readiness(history, audit, evidence)
+          except (OSError, ValueError, KeyError, TypeError) as exc:
+              report = {"status": "MORE_EVIDENCE_REQUIRED", "issues": ["MISSING_OR_INVALID_INPUTS"],
+                        "error_type": type(exc).__name__, "research_only": True,
+                        "orders_allowed": False, "live_trading_approved": False}
+          Path("research_readiness_report.json").write_text(json.dumps(report, indent=2), encoding="utf-8")
+          print(report["status"], report["issues"])
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: project-et-research-readiness
+          path: research_readiness_report.json
+          retention-days: 90
