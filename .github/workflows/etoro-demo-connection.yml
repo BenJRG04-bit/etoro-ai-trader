@@ -11,6 +11,6 @@ jobs:
       - uses: actions/checkout@v4
       - name: Check eToro Demo API (GET only)
         env:
-          ETORO_PUBLIC_KEY: ${{ secrets.ETORO_PUBLIC_KEY }}
+          ETORO_API_KEY: ${{ secrets.ETORO_PUBLIC_KEY }}
           ETORO_USER_KEY: ${{ secrets.ETORO_USER_KEY }}
-        run: python etoro_demo_probe.py
+        run: python tools/etoro_demo_probe.py
