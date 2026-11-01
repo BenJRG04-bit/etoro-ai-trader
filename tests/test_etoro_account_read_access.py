@@ -29,14 +29,14 @@ class ReadOnlyProbeTests(unittest.TestCase):
             return Response()
 
         result = check_read_access("public", "user", opener)
-        self.assertEqual(result, {"watchlist": 200, "identity": 200, "demo": 200})
-        self.assertEqual(len(requested), 3)
+        self.assertEqual(result, {"watchlist": 200, "market_data": 200, "identity": 200, "demo": 200})
+        self.assertEqual(len(requested), 4)
 
     def test_http_403_reports_only_code(self):
         def opener(request, timeout):
             raise urllib.error.HTTPError(request.full_url, 403, "Forbidden", {}, io.BytesIO(b"private"))
         result = check_read_access("public", "user", opener)
-        self.assertEqual(result, {"watchlist": 403, "identity": 403, "demo": 403})
+        self.assertEqual(result, {"watchlist": 403, "market_data": 403, "identity": 403, "demo": 403})
         self.assertNotIn("private", repr(result))
 
     def test_missing_keys_never_send_request(self):
