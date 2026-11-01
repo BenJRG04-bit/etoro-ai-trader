@@ -1,8 +1,8 @@
 """Read-only authentication diagnosis for the eToro Public API.
 
-Checks REAL and DEMO portfolio read endpoints with the GitHub Actions key pair.
-No order endpoints, POST requests, account values, tokens or response bodies.
-This diagnostic must NEVER be reused as a trading execution module.
+Checks identity, REAL portfolio and DEMO portfolio read endpoints with the
+GitHub Actions API key pair. No order endpoints, POST requests, account values,
+tokens or response bodies. Never reuse this script as a trade execution module.
 """
 import os
 import sys
@@ -12,6 +12,7 @@ import uuid
 
 BASE = "https://public-api.etoro.com/api/v1"
 ENDPOINTS = (
+    ("identity", "/me"),
     ("real", "/trading/info/portfolio"),
     ("demo", "/trading/info/demo/portfolio"),
 )
@@ -34,7 +35,7 @@ def check_read_access(public_key, user_key, opener=urllib.request.urlopen):
         )
         try:
             with opener(request, timeout=15) as response:
-                # Read nothing from the response to avoid processing private account data.
+                # Do not read, log, parse, or save any private account information.
                 results[account_type] = int(response.status)
         except urllib.error.HTTPError as exc:
             results[account_type] = int(exc.code)
@@ -59,10 +60,12 @@ def main():
         print("DIAGNOSIS: Demo reading works through GitHub; real reading is denied.")
     elif result.get("real") == 200 and result.get("demo") == 200:
         print("DIAGNOSIS: Both account read endpoints respond successfully.")
+    elif result.get("identity") == 200:
+        print("DIAGNOSIS: GitHub key pair works for identity, but trading reads are denied.")
     else:
-        print("DIAGNOSIS: Neither account read endpoint is available with these GitHub secrets.")
+        print("DIAGNOSIS: Identity and both account reads failed; key pair or API access requires investigation.")
     print("NO_ORDERS_ATTEMPTED: true")
-    return 0 if 200 in result.values() else 1
+    return 0 if (result.get("real") == 200 or result.get("demo") == 200) else 1
 
 
 if __name__ == "__main__":
