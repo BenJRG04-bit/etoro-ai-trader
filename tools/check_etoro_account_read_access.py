@@ -1,7 +1,7 @@
 """Safe, read-only eToro API key diagnostics.
 
-Tests the documented first-call watchlist, identity and demo portfolio routes.
-Never sends trading orders, reads response bodies, or logs credentials.
+Tests documented watchlist, market data, identity and demo portfolio routes.
+Never sends trading orders, reads response bodies, or logs credentials.\nPrints only request UUIDs on 401/403 for eToro support to trace.
 """
 import os
 import sys
@@ -12,6 +12,7 @@ import uuid
 BASE = "https://public-api.etoro.com/api/v1"
 ENDPOINTS = (
     ("watchlist", "/watchlists/default-watchlists/items"),
+    ("market_data", "/market-data/instruments"),
     ("identity", "/me"),
     ("demo", "/trading/info/demo/portfolio"),
 )
@@ -22,12 +23,13 @@ def check_read_access(public_key, user_key, opener=urllib.request.urlopen):
         return {"error": "MISSING_KEY_SECRETS"}
     results = {}
     for label, path in ENDPOINTS:
+        request_id = str(uuid.uuid4())
         request = urllib.request.Request(
             BASE + path,
             headers={
                 "x-api-key": public_key,
                 "x-user-key": user_key,
-                "x-request-id": str(uuid.uuid4()),
+                "x-request-id": request_id,
                 "Accept": "application/json",
             },
             method="GET",
@@ -37,6 +39,8 @@ def check_read_access(public_key, user_key, opener=urllib.request.urlopen):
                 results[label] = int(response.status)
         except urllib.error.HTTPError as exc:
             results[label] = int(exc.code)
+            if exc.code in (401, 403):
+                print(f"{label.upper()}_REQUEST_ID: {request_id}")
             exc.close()
         except (urllib.error.URLError, TimeoutError, OSError):
             results[label] = "NETWORK_ERROR"
@@ -50,8 +54,8 @@ def diagnose(result):
         return "WATCHLIST_OK_DEMO_DENIED_CHECK_DEMO_SCOPES"
     if result.get("identity") == 200:
         return "IDENTITY_OK_OTHER_READS_DENIED_CHECK_SCOPES"
-    if all(result.get(k) == 403 for k in ("watchlist", "identity", "demo")):
-        return "ALL_403_CHECK_KEY_PAIR_ENTITLEMENTS_OR_SOURCE_IP"
+    if all(result.get(k) == 403 for k in ("watchlist", "market_data", "identity", "demo")):
+        return "ALL_403_CHECK_API_ENTITLEMENT_SCOPES_IP_OR_SUPPORT"
     if any(result.get(k) == "NETWORK_ERROR" for k in ENDPOINT_LABELS):
         return "NETWORK_ERROR_CHECK_GITHUB_CONNECTIVITY"
     return "AUTH_UNCONFIRMED_CHECK_PUBLIC_KEY_USER_KEY_PAIR"
