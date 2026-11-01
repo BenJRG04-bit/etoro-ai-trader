@@ -6,6 +6,8 @@ on:
       - 'portfolio_performance_scorecard.py'
       - 'portfolio_stress_scenarios.py'
       - 'portfolio_stress_resilience.py'
+      - 'portfolio_unified_evidence_review.py'
+      - 'tests/test_portfolio_unified_evidence_review.py'
       - 'tests/test_portfolio_stress_resilience.py'
       - 'tests/test_portfolio_stress_scenarios.py'
       - 'tests/test_portfolio_performance_scorecard.py'
@@ -61,6 +63,8 @@ jobs:
           PY
       - name: Cross-check synthetic stress resilience and exposure limits
         run: python portfolio_stress_resilience.py
+      - name: Build conservative unified evidence review
+        run: python portfolio_unified_evidence_review.py
       - name: Archive offline report
         uses: actions/upload-artifact@v4
         with:
@@ -70,4 +74,5 @@ jobs:
             portfolio_performance_scorecard.json
             portfolio_stress_report.json
             portfolio_stress_resilience.json
+            portfolio_unified_evidence_review.json
           retention-days: 30
