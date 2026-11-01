@@ -57,6 +57,7 @@ jobs:
           Path("openai_research_report.json").write_text(
               json.dumps(result, indent=2), encoding="utf-8")
           print("AI adviser status:", result["status"])
+          print("Safe diagnostic:", json.dumps(result.get("diagnostic", {}), sort_keys=True))
           print("Research assessments:", len(result.get("assessments", [])))
           print("Broker orders: ZERO")
           PY
