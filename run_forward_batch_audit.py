@@ -13,6 +13,10 @@ def run_batch(paths, fetcher=fetch_daily_closes):
                 documents.append(json.load(handle))
         except (OSError, ValueError):
             documents.append({})
+    # No archived evidence must not require an external market-data request.
+    if not documents:
+        return audit_forward_snapshots([], lambda ticker, period="2y": (_ for _ in ()).throw(
+            AssertionError("Empty archive must not fetch market data")))
     histories = {}
     for ticker in WATCHLIST:
         try:
