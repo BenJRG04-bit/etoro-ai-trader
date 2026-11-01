@@ -42,7 +42,7 @@ jobs:
               else:
                   with open("prior_run_id.txt", "w") as f:
                       f.write(str(selected))
-                  print("Newest eligible prior snapshot run:", selected)
+                  print("Selected lagged prior snapshot run:", selected)
           except (OSError, ValueError, KeyError) as exc:
               print("PENDING: unable to locate earlier snapshot:", type(exc).__name__)
           PY

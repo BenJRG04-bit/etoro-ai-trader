@@ -11,10 +11,15 @@ class ForwardRunSelectionTests(unittest.TestCase):
     def test_single_prior_run_is_eligible(self):
         self.assertEqual(select_prior_snapshot_run(
             [row(12, "2026-11-01T11:00:00Z")], evaluation_started_at=START), 12)
-    def test_latest_prior_run_chosen(self):
+    def test_previous_run_chosen_when_two_exist(self):
         self.assertEqual(select_prior_snapshot_run(
             [row(11, "2026-11-01T10:00:00Z"), row(12, "2026-11-01T11:00:00Z")],
-            evaluation_started_at=START), 12)
+            evaluation_started_at=START), 11)
+    def test_unsorted_runs_select_previous_by_completion(self):
+        runs = [row(22, '2026-11-01T11:30:00Z'),
+                row(20, '2026-11-01T09:00:00Z'),
+                row(21, '2026-11-01T10:00:00Z')]
+        self.assertEqual(select_prior_snapshot_run(runs, evaluation_started_at=START), 21)
     def test_future_run_ignored(self):
         self.assertIsNone(select_prior_snapshot_run(
             [row(13, "2026-11-01T13:00:00Z")], evaluation_started_at=START))
