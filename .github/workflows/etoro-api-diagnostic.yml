@@ -39,8 +39,9 @@ jobs:
               print("HTTP_STATUS:", error.code)
               print("API rejected request. Check permissions, key pairing and environment; no secrets printed.")
               print("ERROR_CATEGORY:", {401:"unauthorized",403:"forbidden",404:"endpoint_not_found",429:"rate_limited"}.get(error.code,"other_http_error"))
+              raw_error = error.read(4096)
               try:
-                  payload = json.loads(error.read(4096).decode("utf-8", errors="replace"))
+                  payload = json.loads(raw_error.decode("utf-8", errors="replace"))
                   if isinstance(payload, dict):
                       for field in ("code", "errorCode", "statusCode"):
                           value = payload.get(field)
@@ -50,7 +51,7 @@ jobs:
                   pass
               # Emit only a tightly allowlisted, short server error code/message.
               try:
-                  payload = json.loads(error.read(2048).decode("utf-8", errors="replace"))
+                  payload = json.loads(raw_error.decode("utf-8", errors="replace"))
                   if isinstance(payload, dict):
                       for field in ("error", "error_code", "errorCode", "message"):
                           val = payload.get(field)
