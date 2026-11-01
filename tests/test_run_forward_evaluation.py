@@ -9,6 +9,7 @@ class ForwardEvaluationTests(unittest.TestCase):
             "status": "SNAPSHOT_RESEARCH_ONLY",
             "snapshot": {
                 "schema_version": 1, "research_only": True,
+                "orders_allowed": False, "live_trading_approved": False,
                 "snapshot_date": self.dates[-1],
                 "assets": {t: {"close": 100., "original_positive": False,
                                "confirmed_positive": False, "risk_veto": True}

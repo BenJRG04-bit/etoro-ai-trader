@@ -3,7 +3,7 @@
 The audit never replays decisions with newer data. It evaluates each archived
 snapshot exactly as recorded, and separates observed from pending results.
 """
-from datetime import date
+from forward_archive_integrity import validate_archived_snapshot
 from run_forward_evaluation import run_evaluation
 from historical_prices import WATCHLIST
 
@@ -15,23 +15,16 @@ def audit_forward_snapshots(documents, fetcher, *, max_snapshots=90):
     by_date = {}
     rejected = 0
     for doc in documents:
-        if not isinstance(doc, dict) or doc.get("status") != "SNAPSHOT_RESEARCH_ONLY":
-            rejected += 1
-            continue
-        snap = doc.get("snapshot")
-        if not isinstance(snap, dict) or snap.get("schema_version") != 1:
-            rejected += 1
-            continue
-        stamp = snap.get("snapshot_date")
         try:
-            date.fromisoformat(stamp)
-        except (TypeError, ValueError):
-            rejected += 1
-            continue
-        if set(snap.get("assets", {})) != set(WATCHLIST):
+            snap = validate_archived_snapshot(doc)
+            stamp = snap["snapshot_date"]
+        except (ValueError, TypeError, KeyError):
             rejected += 1
             continue
         if stamp in by_date:
+            if by_date[stamp] is None:
+                rejected += 1
+                continue
             if by_date[stamp] != doc:
                 # Conflicting snapshots cannot be trusted: exclude date.
                 by_date[stamp] = None

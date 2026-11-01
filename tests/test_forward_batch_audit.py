@@ -10,6 +10,7 @@ class BatchAuditTests(unittest.TestCase):
     def doc(self, index=68):
         return {"status": "SNAPSHOT_RESEARCH_ONLY",
                 "snapshot": {"schema_version": 1, "research_only": True,
+                "orders_allowed": False, "live_trading_approved": False,
                              "snapshot_date": self.dates[index],
                              "assets": {t: {"close": 101. if index == 69 else 100., "original_positive": True,
                                            "confirmed_positive": False, "risk_veto": False}
