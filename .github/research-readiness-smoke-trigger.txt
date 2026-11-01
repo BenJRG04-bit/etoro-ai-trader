@@ -1,0 +1,3 @@
+Project E.T. research-only GitHub Actions readiness smoke test, November 2026.
+This file triggers the actual readiness workflow on main after merge.
+It does not authorize orders, broker writes, or live trading.
