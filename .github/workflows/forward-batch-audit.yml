@@ -67,6 +67,16 @@ jobs:
               for ticker,entry in assets.items():
                   print(policy,ticker,'signals:',entry['signals'],'minimum evidence met:',entry['minimum_evidence_met'])
           PY
+      - name: Check archive coverage and cross-report consistency
+        run: python run_forward_archive_health.py forward_batch_audit_report.json forward_evidence_quality_report.json > forward_archive_health_report.json
+      - name: Print coverage health
+        run: |
+          python - <<'PY'
+          import json
+          r=json.load(open('forward_archive_health_report.json'))
+          print('Archive health:',r['status'])
+          print('Issues:',', '.join(r['issues']) if r['issues'] else 'none')
+          PY
       - name: Build offline forward evidence dashboard
         run: python forward_evidence_dashboard.py
       - uses: actions/upload-artifact@v4
@@ -76,4 +86,5 @@ jobs:
             forward_batch_audit_report.json
             forward_evidence_quality_report.json
             forward_evidence_dashboard.html
+            forward_archive_health_report.json
           retention-days: 90
