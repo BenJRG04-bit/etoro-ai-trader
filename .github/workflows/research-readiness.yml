@@ -52,8 +52,12 @@ jobs:
           Path("research_readiness_report.json").write_text(json.dumps(report, indent=2), encoding="utf-8")
           print(report["status"], report["issues"])
           PY
+      - name: Build offline readiness dashboard
+        run: python research_readiness_dashboard.py
       - uses: actions/upload-artifact@v4
         with:
           name: project-et-research-readiness
-          path: research_readiness_report.json
+          path: |
+            research_readiness_report.json
+            research_readiness_dashboard.html
           retention-days: 90
