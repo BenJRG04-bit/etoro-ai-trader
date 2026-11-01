@@ -41,5 +41,5 @@ jobs:
           except Exception as e:
               print("NETWORK_ERROR_TYPE:", type(e).__name__)
               raise SystemExit("NETWORK_FAILURE")
-          print("NEXT_GATE: Verify account is demo before enabling demo orders")
+          print("NEXT_GATE: Confirm API authorization before any demo order execution")
           PY
