@@ -1,0 +1,50 @@
+name: Project ET historical paper edge audit
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'paper_edge_audit.py'
+      - 'tests/test_paper_edge_audit.py'
+      - '.github/workflows/paper-edge-audit.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  edge-audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Offline tests
+        run: python -m unittest discover -s tests -v
+      - name: Historical paper comparison from public daily prices
+        run: python run_paper_report.py > historical_paper_report.json
+      - name: Independent evidence check (NO broker access)
+        run: python paper_edge_audit.py historical_paper_report.json > paper_edge_audit.json
+      - name: Print evidence decision only
+        run: |
+          python - <<'PY'
+          import json
+          with open("paper_edge_audit.json", encoding="utf-8") as f:
+              audit = json.load(f)
+          print("Audit status:", audit["status"])
+          print("Assets evaluated:", audit["evaluated_count"])
+          print("Assets beating matched benchmark:", audit["outperformed_count"])
+          print("Blockers:", ", ".join(audit["blockers"]))
+          print("Trading enabled:", audit["orders_allowed"])
+          PY
+      - name: Upload read-only research result
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: project-et-paper-edge-audit
+          path: |
+            historical_paper_report.json
+            paper_edge_audit.json
+          if-no-files-found: warn
+          retention-days: 30
