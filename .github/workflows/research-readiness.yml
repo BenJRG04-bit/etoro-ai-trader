@@ -1,6 +1,10 @@
 name: Project ET end-to-end research readiness
 on:
   workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/research-readiness-smoke-trigger.txt'
   schedule:
     - cron: '15 7 * * 2-6'
 permissions:
