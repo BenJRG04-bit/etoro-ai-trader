@@ -9,6 +9,10 @@ on:
       - 'pattern_recognition.py'
       - 'pattern_strategy_evaluation.py'
       - 'run_pattern_research.py'
+      - 'run_pattern_forward_snapshot.py'
+      - 'run_pattern_forward_evaluation.py'
+      - 'pattern_archive_run_selection.py'
+      - 'tests/test_pattern_forward_validation.py'
       - 'tests/test_pattern_recognition.py'
       - '.github/workflows/pattern-research.yml'
 
@@ -32,6 +36,22 @@ jobs:
         run: python -m unittest discover -s tests -v
       - name: Classify daily price patterns and evaluate fixed policies
         run: python run_pattern_research.py > pattern_research_report.json
+      - name: Freeze forward prediction before later closes (no broker)
+        run: python run_pattern_forward_snapshot.py > pattern_forward_snapshot.json
+      - name: Verify archived prediction safety and readiness
+        run: |
+          python - <<'PY'
+          import json
+          with open("pattern_forward_snapshot.json", encoding="utf-8") as file:
+              record = json.load(file)
+          assert record["status"] == "PATTERN_SNAPSHOT_RESEARCH_ONLY", record.get("error_type")
+          from run_pattern_forward_evaluation import validate_pattern_forward_snapshot
+          snapshot = validate_pattern_forward_snapshot(record)
+          print("Archived:", snapshot["signal_close_date"])
+          print("Strategy:", snapshot["strategy_version"])
+          print("Research only:", snapshot["research_only"])
+          print("Orders allowed:", snapshot["orders_allowed"])
+          PY
       - name: Show research-only outcome summary
         run: |
           python - <<'PY'
@@ -59,6 +79,8 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: project-et-pattern-research
-          path: pattern_research_report.json
+          path: |
+            pattern_research_report.json
+            pattern_forward_snapshot.json
           if-no-files-found: warn
           retention-days: 90
