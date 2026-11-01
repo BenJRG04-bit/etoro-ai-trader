@@ -3,7 +3,22 @@ import json
 from math import exp, isfinite, log
 from statistics import mean, pstdev
 
-from historical_prices import WATCHLIST, fetch_daily_closes
+from historical_prices import fetch_daily_closes
+
+# Broader eToro-verified research universe; DIA omitted due ambiguous quote identity.
+RESEARCH_UNIVERSE = ['AAPL','MSFT','NVDA','SPY','VTI','GOOGL','AMZN','META','TSLA','AMD','AVGO','JPM','V','MA','COST','WMT','UNH','XOM','JNJ','PG','KO','PEP','QQQ','IWM','XLK','XLF','XLV','SCHD','VOO','BRK.B','NFLX','CRM','ORCL','UBER']
+
+
+def fetch_research_closes(ticker, period='5y'):
+    # Reuse the existing validated public-data fetcher with an explicit
+    # research-only symbol allowlist. No broker keys, no execution.
+    from historical_prices import WATCHLIST
+    from unittest.mock import patch
+    if ticker not in RESEARCH_UNIVERSE:
+        raise ValueError('Ticker outside expanded research universe')
+    with patch('historical_prices.WATCHLIST', RESEARCH_UNIVERSE):
+        return fetch_daily_closes(ticker, period=period)
+
 
 SAFE = {"research_only": True, "orders_allowed": False,
         "demo_trading_approved": False, "live_trading_approved": False}
@@ -93,7 +108,7 @@ def evaluate_local_model(closes, *, train_fraction=0.7):
                             "assets, no proven edge. Probability not calibrated.")}
 
 
-def run_local_ml_research(fetcher=fetch_daily_closes, tickers=WATCHLIST):
+def run_local_ml_research(fetcher=fetch_research_closes, tickers=RESEARCH_UNIVERSE):
     results = {}
     for ticker in tickers:
         try:
