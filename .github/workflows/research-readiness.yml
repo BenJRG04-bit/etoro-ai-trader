@@ -60,6 +60,8 @@ jobs:
           PY
       - name: Build offline readiness dashboard
         run: python research_readiness_dashboard.py
+      - name: Validate research artifact contract
+        run: python validate_report_artifacts.py research_readiness_report.json
       - uses: actions/upload-artifact@v4
         with:
           name: project-et-research-readiness
