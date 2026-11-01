@@ -9,7 +9,9 @@ from capital_guard import CapitalGuard
 from regime_council import regime_aware_council
 
 def simulate_portfolio(price_series, starting_cash=100.0, fee_rate=0.001,
-                       max_total_allocation=0.05, assessment_fn=regime_aware_council):
+                       max_total_allocation=0.05, assessment_fn=regime_aware_council,
+                       spread_rate=0.0, slippage_rate=0.0, fx_rate=0.0,
+                       minimum_order=0.0):
     if not isinstance(price_series, dict) or not price_series:
         raise ValueError("Need a nonempty ticker-to-price mapping")
     if not isinstance(starting_cash, (float, int)) or isinstance(starting_cash, bool) or not isfinite(starting_cash) or starting_cash <= 0:
@@ -18,6 +20,11 @@ def simulate_portfolio(price_series, starting_cash=100.0, fee_rate=0.001,
         raise ValueError("Invalid fee or allocation")
     if not 0 <= fee_rate < 1 or not 0 <= max_total_allocation <= 0.05:
         raise ValueError("Fee or total exposure outside safety bounds")
+    extras = (spread_rate, slippage_rate, fx_rate, minimum_order)
+    if any(type(x) not in (int, float) or not isfinite(x) or x < 0 for x in extras):
+        raise ValueError('Invalid execution friction assumptions')
+    if any(x >= 1 for x in (spread_rate, slippage_rate, fx_rate)):
+        raise ValueError('Invalid execution friction rate')
     symbols = sorted(price_series)
     n = len(price_series[symbols[0]])
     if n < 62:
@@ -50,9 +57,16 @@ def simulate_portfolio(price_series, starting_cash=100.0, fee_rate=0.001,
                     eligible.append(ticker)
         per_asset = max_total_allocation / len(eligible) if eligible else 0.0
         desired = {ticker: (per_asset if ticker in eligible else 0.0) for ticker in symbols}
+        # Exclude hypothetical orders smaller than the scenario minimum.
+        # Recheck turnover against the actual retained allocations.
+        if minimum_order:
+            for ticker in symbols:
+                change = abs(desired[ticker] - allocations[ticker]) * equity
+                if change > 1e-12 and change < minimum_order:
+                    desired[ticker] = allocations[ticker]
         turnover = sum(abs(desired[ticker] - allocations[ticker]) for ticker in symbols)
         if turnover > 1e-12:
-            equity *= (1 - fee_rate * turnover)
+            equity *= (1 - (fee_rate + spread_rate / 2 + slippage_rate + fx_rate) * turnover)
             rebalances += 1
         allocations = desired
         max_observed_allocation = max(max_observed_allocation, sum(allocations.values()))
@@ -82,11 +96,15 @@ def simulate_portfolio(price_series, starting_cash=100.0, fee_rate=0.001,
         "max_observed_total_allocation": round(max_observed_allocation, 6),
         "max_total_allocation": max_total_allocation,
         "fee_rate": fee_rate,
+        "spread_rate": spread_rate,
+        "slippage_rate": slippage_rate,
+        "fx_rate": fx_rate,
+        "assumed_minimum_order": minimum_order,
         "capital_guard_enabled": True,
         "halted": halted,
         "halt_reason": halt_reason,
         "research_only": True,
         "orders_allowed": False,
         "live_trading_approved": False,
-        "limitations": "Single historical shared cash account; simplified target-weight rebalance at close, no FX, spread, slippage, taxes, dividends or actual execution. Guard cannot prevent gaps. All dates must be aligned exactly; no forward filling. No live trading.",
+        "limitations": "Single historical shared cash account; simplified target-weight rebalance at close with optional illustrative linear friction and minimum-order filtering; no actual FX quotes, spreads, fills, taxes, dividends or actual execution. Guard cannot prevent gaps. All dates must be aligned exactly; no forward filling. No live trading.",
     }
