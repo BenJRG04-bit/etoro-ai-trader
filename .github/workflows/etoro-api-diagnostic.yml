@@ -48,6 +48,18 @@ jobs:
                               print("API_ERROR_" + field.upper() + ":", value)
               except (ValueError, UnicodeError):
                   pass
+              # Emit only a tightly allowlisted, short server error code/message.
+              try:
+                  payload = json.loads(error.read(2048).decode("utf-8", errors="replace"))
+                  if isinstance(payload, dict):
+                      for field in ("error", "error_code", "errorCode", "message"):
+                          val = payload.get(field)
+                          if isinstance(val, str):
+                              import re
+                              if re.fullmatch(r"[A-Za-z_ -]{1,80}", val):
+                                  print("SERVER_" + field.upper() + ":", val)
+              except (ValueError, UnicodeError):
+                  pass
               raise SystemExit(1)
           except Exception as error:
               print("NETWORK_ERROR_TYPE:", type(error).__name__)
