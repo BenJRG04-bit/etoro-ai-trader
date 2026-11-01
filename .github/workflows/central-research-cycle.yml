@@ -1,0 +1,34 @@
+name: Project ET central read-only research cycle
+on:
+  schedule:
+    - cron: '20 1 * * 2-6'
+  workflow_dispatch:
+  push:
+    paths:
+      - 'central_intelligence.py'
+      - 'run_central_research_cycle.py'
+      - 'tests/test_central_research_cycle.py'
+      - '.github/workflows/central-research-cycle.yml'
+permissions:
+  contents: read
+jobs:
+  research:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Run offline tests
+        run: python -m unittest discover -s tests -v
+      - name: Run read-only central research
+        run: python run_central_research_cycle.py
+      - name: Archive research output even when market data unavailable
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: project-et-central-research
+          path: central_research_cycle.json
+          if-no-files-found: warn
+          retention-days: 30
