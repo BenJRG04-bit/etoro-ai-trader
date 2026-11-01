@@ -24,7 +24,7 @@ def render_pipeline_dashboard(report):
         if not isinstance(item, dict) or item.get("workflow") != filename:
             raise ValueError("Invalid workflow mapping")
         status = item.get("status")
-        if status not in ("SUCCESS", "NO_RUN_FOUND", "INCOMPLETE_OR_FAILED", "STALE_RUN"):
+        if status not in ("SUCCESS", "NO_RUN_FOUND", "INCOMPLETE_OR_FAILED", "STALE_RUN", "FETCH_ERROR"):
             raise ValueError("Unknown workflow state")
         if status != "SUCCESS":
             actual_blockers.append(label)

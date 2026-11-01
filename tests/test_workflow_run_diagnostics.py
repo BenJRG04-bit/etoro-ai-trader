@@ -48,8 +48,9 @@ class WorkflowDiagnosticsTests(unittest.TestCase):
         self.assertEqual(result["status"], "WORKFLOW_VERIFICATION_INCOMPLETE")
 
     def test_rejects_malformed_response(self):
-        with self.assertRaises(ValueError):
-            run_diagnostics("owner/repo", "test-token", fetch=lambda url, headers: {})
+        report = run_diagnostics("owner/repo", "test-token", fetch=lambda url, headers: {})
+        self.assertEqual(report["status"], "WORKFLOW_VERIFICATION_INCOMPLETE")
+        self.assertTrue(all(item["status"] == "FETCH_ERROR" for item in report["workflows"].values()))
 
 if __name__ == "__main__":
     unittest.main()
