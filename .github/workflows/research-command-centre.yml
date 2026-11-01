@@ -22,10 +22,14 @@ jobs:
           python-version: '3.12'
       - name: Offline tests
         run: python -m unittest discover -s tests -v
+      - name: Generate latest central intelligence research
+        run: python run_central_research_cycle.py
+      - name: Generate latest small-budget study
+        run: python small_budget_study.py
       - name: Build offline research dashboard
         run: python research_command_centre.py
       - uses: actions/upload-artifact@v4
         with:
           name: project-et-command-centre
-          path: project_et_command_centre.html
+          path: |\n            project_et_command_centre.html\n            central_research_cycle.json\n            small_budget_study.json
           retention-days: 30
