@@ -31,8 +31,12 @@ jobs:
           print('Pipeline:', report['status'])
           print('Unverified workflows:', ', '.join(report['blockers']) or 'none')
           PY
+      - name: Build static pipeline health dashboard
+        run: python workflow_diagnostics_dashboard.py
       - uses: actions/upload-artifact@v4
         with:
           name: project-et-pipeline-diagnostics
-          path: workflow_diagnostics_report.json
+          path: |
+            workflow_diagnostics_report.json
+            workflow_diagnostics_dashboard.html
           retention-days: 90
