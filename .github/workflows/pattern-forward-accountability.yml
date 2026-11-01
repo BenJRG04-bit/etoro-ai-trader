@@ -1,0 +1,111 @@
+name: Project ET weekly forward pattern accountability
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '45 8 * * 0'
+  push:
+    paths:
+      - 'pattern_forward_scorecard.py'
+      - 'run_pattern_forward_scorecard.py'
+      - 'tests/test_pattern_forward_scorecard.py'
+      - '.github/workflows/pattern-forward-accountability.yml'
+
+permissions:
+  actions: read
+  contents: read
+
+concurrency:
+  group: project-et-forward-accountability
+  cancel-in-progress: false
+
+jobs:
+  accountability:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Verify offline strategy and safety regressions
+        run: python -m unittest discover -s tests -v
+      - name: Collect available successful main-branch forward evaluation artifacts
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          python - <<'PY'
+          import json, os, subprocess
+          from pathlib import Path
+
+          repo = os.environ["GH_REPO"]
+          outdir = Path("archived_pattern_evaluations")
+          outdir.mkdir()
+          url = (
+              f"repos/{repo}/actions/workflows/pattern-forward-evaluation.yml/runs"
+              "?branch=main&status=success&per_page=60"
+          )
+          listing = subprocess.run(
+              ["gh", "api", url], check=True, capture_output=True, text=True
+          )
+          runs = json.loads(listing.stdout)["workflow_runs"]
+          ids = [row["id"] for row in runs if
+                 row.get("status") == "completed"
+                 and row.get("conclusion") == "success"
+                 and row.get("head_branch") == "main"]
+          available, unavailable = [], []
+          for run_id in ids:
+              target = outdir / str(run_id)
+              target.mkdir()
+              result = subprocess.run(
+                  ["gh", "run", "download", str(run_id), "-R", repo,
+                   "--name", "project-et-pattern-forward-evaluation",
+                   "--dir", str(target)],
+                  capture_output=True, text=True
+              )
+              if result.returncode != 0 or not (target / "pattern_forward_evaluation.json").exists():
+                  unavailable.append(run_id)
+              else:
+                  available.append(run_id)
+          manifest = {
+              "expected_runs": len(ids),
+              "downloaded": len(available),
+              "unavailable": unavailable,
+          }
+          (outdir / "manifest.json").write_text(
+              json.dumps(manifest, indent=2), encoding="utf-8"
+          )
+          print("Archived reports found:", len(available))
+          print("Unrecoverable archived reports:", len(unavailable))
+          PY
+      - name: Score all available frozen patterns, including missed opportunities
+        run: python run_pattern_forward_scorecard.py archived_pattern_evaluations > pattern_forward_scorecard.json
+      - name: Report evidence readiness, never trading approval
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          with Path("pattern_forward_scorecard.json").open(encoding="utf-8") as f:
+              r = json.load(f)
+          assert r["research_only"] is True
+          assert r["orders_allowed"] is False
+          assert r["demo_trading_approved"] is False
+          assert r["live_trading_approved"] is False
+          print("Accountability status:", r["status"])
+          print("Unique signal dates:", r.get("unique_signal_dates", 0))
+          print("Archived candidates:", r.get("candidate_asset_days", 0))
+          print("Skipped opportunities that would have gained:", r.get("noncandidate_missed_net_gain", 0))
+          print("Skipped opportunities that would have lost:", r.get("noncandidate_avoided_net_loss", 0))
+          print("Unavailable archive runs:", r.get("unavailable_archived_runs", 0))
+          if r["status"] in ("INVALID_INPUTS", "INCOMPLETE_ARCHIVE_SET"):
+              raise SystemExit("Cannot safely summarise incomplete or malformed archive evidence")
+          PY
+      - name: Upload conservative forward scorecard
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: project-et-pattern-forward-scorecard
+          path: pattern_forward_scorecard.json
+          if-no-files-found: warn
+          retention-days: 90
