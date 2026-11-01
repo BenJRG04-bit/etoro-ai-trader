@@ -2,6 +2,10 @@ name: eToro read-only connection diagnostics
 
 on:
   workflow_dispatch:
+  push:
+    paths:
+      - 'tools/check_etoro_account_read_access.py'
+      - '.github/workflows/etoro-account-read-diagnostics.yml'
 
 permissions:
   contents: read
