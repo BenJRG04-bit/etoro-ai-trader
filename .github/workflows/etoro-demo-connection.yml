@@ -1,0 +1,16 @@
+name: eToro Demo read-only connection check
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  demo-connection:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check eToro Demo API (GET only)
+        env:
+          ETORO_PUBLIC_KEY: ${{ secrets.ETORO_PUBLIC_KEY }}
+          ETORO_USER_KEY: ${{ secrets.ETORO_USER_KEY }}
+        run: python etoro_demo_probe.py
