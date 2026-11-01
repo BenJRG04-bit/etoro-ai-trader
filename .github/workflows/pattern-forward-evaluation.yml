@@ -8,8 +8,10 @@ on:
     paths:
       - 'run_pattern_forward_evaluation.py'
       - 'run_pattern_forward_snapshot.py'
+      - 'run_pattern_forward_batch.py'
       - 'pattern_archive_run_selection.py'
       - 'tests/test_pattern_forward_validation.py'
+      - 'tests/test_pattern_forward_batch.py'
       - '.github/workflows/pattern-forward-evaluation.yml'
 
 permissions:
@@ -31,7 +33,7 @@ jobs:
           python-version: '3.12'
       - name: Test offline research and safety modules
         run: python -m unittest discover -s tests -v
-      - name: Select an older main-branch GitHub pattern archive
+      - name: Select ALL mature main-branch snapshots in a rolling batch
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
@@ -40,7 +42,7 @@ jobs:
           import json, os, urllib.request
           from datetime import datetime, timezone
           from pathlib import Path
-          from pattern_archive_run_selection import select_prior_pattern_run
+          from pattern_archive_run_selection import select_mature_pattern_runs
 
           repo = os.environ["GH_REPO"]
           headers = {
@@ -52,62 +54,85 @@ jobs:
               f"https://api.github.com/repos/{repo}/actions/workflows/"
               "pattern-research.yml/runs?branch=main&status=success&per_page=100"
           )
-          try:
-              request = urllib.request.Request(url, headers=headers)
-              with urllib.request.urlopen(request, timeout=20) as response:
-                  runs = json.load(response).get("workflow_runs", [])
-              selected = select_prior_pattern_run(
-                  runs, evaluated_at=datetime.now(timezone.utc).isoformat()
+          request = urllib.request.Request(url, headers=headers)
+          with urllib.request.urlopen(request, timeout=20) as response:
+              runs = json.load(response).get("workflow_runs", [])
+          selected = select_mature_pattern_runs(
+              runs, evaluated_at=datetime.now(timezone.utc).isoformat(),
+              minimum_age_hours=48, max_runs=30
+          )
+          if selected:
+              Path("pattern_prior_run_ids.txt").write_text(
+                  "\n".join(map(str, selected)) + "\n", encoding="utf-8"
               )
-              if selected is None:
-                  print("PENDING: No sufficiently old successful archived snapshot")
-              else:
-                  Path("pattern_prior_run_id.txt").write_text(str(selected))
-                  print("Selected archived GitHub Actions run:", selected)
-          except (OSError, ValueError, TypeError, KeyError) as exc:
-              print("PENDING: Archive listing unavailable:", type(exc).__name__)
+          print("Older frozen pattern archives selected:", len(selected))
+          print("No outcomes will be invented when later closes are missing")
           PY
-      - name: Download prior immutable archived snapshot
-        if: ${{ hashFiles('pattern_prior_run_id.txt') != '' }}
+      - name: Download each selected precommitted research archive
+        if: ${{ hashFiles('pattern_prior_run_ids.txt') != '' }}
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
-        run: gh run download "$(cat pattern_prior_run_id.txt)" --name project-et-pattern-research --dir prior_pattern_archive
-      - name: Evaluate against strictly later public daily closes
-        if: ${{ hashFiles('prior_pattern_archive/pattern_forward_snapshot.json') != '' }}
-        run: python run_pattern_forward_evaluation.py prior_pattern_archive/pattern_forward_snapshot.json > pattern_forward_evaluation.json
-      - name: Report observed or still-pending outcomes
+        run: |
+          mkdir -p prior_pattern_archives
+          while IFS= read -r run_id; do
+            [ -n "$run_id" ] || continue
+            mkdir -p "prior_pattern_archives/$run_id"
+            gh run download "$run_id" -R "$GH_REPO" \
+              --name project-et-pattern-research \
+              --dir "prior_pattern_archives/$run_id"
+          done < pattern_prior_run_ids.txt
+      - name: Score all archives against one shared fresh public-price download
+        if: ${{ hashFiles('pattern_prior_run_ids.txt') != '' }}
+        run: |
+          python run_pattern_forward_batch.py \
+            prior_pattern_archives evaluated_pattern_archives > pattern_batch_summary.json
+      - name: Report complete, pending or invalid frozen outcomes
         run: |
           python - <<'PY'
           import json
           from pathlib import Path
 
-          path = Path("pattern_forward_evaluation.json")
-          if not path.exists():
+          summary = Path("pattern_batch_summary.json")
+          if not summary.exists():
               result = {
-                  "status": "PENDING", "reason": "NO_ELIGIBLE_ARCHIVED_PATTERN_SNAPSHOT",
-                  "research_only": True, "orders_allowed": False,
-                  "demo_trading_approved": False, "live_trading_approved": False
+                  "status": "PENDING",
+                  "reason": "NO_MATURE_PATTERN_ARCHIVES",
+                  "research_only": True,
+                  "orders_allowed": False,
+                  "demo_trading_approved": False,
+                  "live_trading_approved": False,
               }
-              path.write_text(json.dumps(result, indent=2), encoding="utf-8")
-          with path.open(encoding="utf-8") as file:
-              result = json.load(file)
-          assert result["research_only"] is True
-          assert result["orders_allowed"] is False
-          assert result["demo_trading_approved"] is False
-          assert result["live_trading_approved"] is False
-          print("Pattern forward status:", result["status"])
-          print("Completed asset observations:", result.get("observed_count", 0))
-          print("Still awaiting new closes:", result.get("pending_count", 0))
-          print("Frozen research candidates:", result.get("research_candidates_observed", 0))
-          if result["status"] == "UNAVAILABLE":
-              raise SystemExit("Archived prediction or market data failed safety validation")
+              Path("pattern_forward_evaluation.json").write_text(
+                  json.dumps(result, indent=2), encoding="utf-8"
+              )
+              print("Pattern forward status: PENDING (no aged archives)")
+          else:
+              with summary.open(encoding="utf-8") as file:
+                  result = json.load(file)
+              assert result["research_only"] is True
+              assert result["orders_allowed"] is False
+              assert result["demo_trading_approved"] is False
+              assert result["live_trading_approved"] is False
+              docs = list(Path("evaluated_pattern_archives").rglob("pattern_forward_evaluation.json"))
+              if result["archives"] != len(docs):
+                  raise SystemExit("Missing scored archive outputs")
+              print("Pattern forward batch status:", result["status"])
+              print("Archived predictions evaluated:", result["archives"])
+              print("Outcomes observed:", result["observed"])
+              print("Still waiting for newer closes:", result["pending"])
+              print("Invalid archives or market data:", result["unavailable"])
+              if result["status"] != "BATCH_COMPLETE" or result["unavailable"]:
+                  raise SystemExit("Unsafe or invalid archive detected; no results can be approved")
           PY
-      - name: Archive read-only outcome report
+      - name: Archive every read-only outcome with its original run identifier
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: project-et-pattern-forward-evaluation
-          path: pattern_forward_evaluation.json
+          path: |
+            pattern_forward_evaluation.json
+            pattern_batch_summary.json
+            evaluated_pattern_archives/
           if-no-files-found: warn
           retention-days: 90
