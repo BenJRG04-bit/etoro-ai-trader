@@ -67,6 +67,8 @@ jobs:
               report = json.load(handle)
           print(validate_readiness_consistency(report)['status'])
           PY
+      - name: Validate readiness JSON contents and dashboard contract
+        run: python readiness_artifact_contract.py
       - name: Build offline readiness dashboard
         run: python research_readiness_dashboard.py
       - name: Validate research artifact contract
