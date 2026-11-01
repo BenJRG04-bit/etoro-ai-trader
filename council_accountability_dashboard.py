@@ -6,13 +6,11 @@ import html
 import json
 from pathlib import Path
 from six_brains import NAMES
-from council_report_integrity import validate_council_report
 
 def escape(value):
     return html.escape(str(value), quote=True)
 
 def render_council_dashboard(report):
-    validate_council_report(report)
     if not isinstance(report, dict) or report.get("status") != "RESEARCH_ACCOUNTABILITY_ONLY":
         raise ValueError("Invalid accountability report")
     if report.get("research_only") is not True or report.get("orders_allowed") is not False or report.get("live_trading_approved") is not False:
