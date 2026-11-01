@@ -6,11 +6,14 @@ def check_snapshot_provenance(document, *, observed_at=None, minimum_age_days=1)
         raise ValueError("Invalid minimum age")
     if not isinstance(document, dict) or document.get("status") != "SNAPSHOT_RESEARCH_ONLY":
         raise ValueError("Not an archived research snapshot")
-    if document.get("research_only") is not True or document.get("orders_allowed") is not False or document.get("live_trading_approved") is not False:
-        raise ValueError("Unsafe snapshot")
     snap = document.get("snapshot")
     if not isinstance(snap, dict):
         raise ValueError("Missing snapshot")
+    for key, expected in (("research_only", True), ("orders_allowed", False), ("live_trading_approved", False)):
+        if snap.get(key) is not expected:
+            raise ValueError("Unsafe snapshot")
+        if key in document and document[key] is not expected:
+            raise ValueError("Unsafe envelope")
     raw = snap.get("snapshot_date")
     if not isinstance(raw, str):
         raise ValueError("Missing historical close date")
