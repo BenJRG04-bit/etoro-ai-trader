@@ -1,4 +1,4 @@
-name: eToro API diagnostic (read-only)
+name: eToro API diagnostic (no trading)
 on:
   workflow_dispatch:
 permissions:
@@ -38,6 +38,7 @@ jobs:
           except urllib.error.HTTPError as error:
               print("HTTP_STATUS:", error.code)
               print("API rejected request. Check permissions, key pairing and environment; no secrets printed.")
+              print("ERROR_CATEGORY:", {401:"unauthorized",403:"forbidden",404:"endpoint_not_found",429:"rate_limited"}.get(error.code,"other_http_error"))
               raise SystemExit(1)
           except Exception as error:
               print("NETWORK_ERROR_TYPE:", type(error).__name__)
