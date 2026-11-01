@@ -13,11 +13,9 @@ def fetch_research_closes(ticker, period='5y'):
     # Reuse the existing validated public-data fetcher with an explicit
     # research-only symbol allowlist. No broker keys, no execution.
     from historical_prices import WATCHLIST
-    from unittest.mock import patch
     if ticker not in RESEARCH_UNIVERSE:
         raise ValueError('Ticker outside expanded research universe')
-    with patch('historical_prices.WATCHLIST', RESEARCH_UNIVERSE):
-        return fetch_daily_closes(ticker, period=period)
+    return fetch_daily_closes(ticker, period=period, allowed_tickers=RESEARCH_UNIVERSE)
 
 
 SAFE = {"research_only": True, "orders_allowed": False,
