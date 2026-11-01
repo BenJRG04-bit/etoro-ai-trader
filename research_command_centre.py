@@ -10,7 +10,7 @@ def build_command_centre(reports):
     if not isinstance(reports, dict):
         raise ValueError("Reports must be a mapping")
     cards = []
-    for name in ("central_research", "small_budget", "execution_costs", "cost_adjusted", "decision_quality", "forward_attribution", "unified_evidence"):
+    for name in ("central_research", "small_budget", "execution_costs", "cost_adjusted", "decision_quality", "rolling_audit", "forward_attribution", "unified_evidence"):
         report = reports.get(name)
         if report is None:
             cards.append((name, "NOT_AVAILABLE", "No report provided"))
@@ -28,6 +28,7 @@ def build_command_centre(reports):
             "execution_costs": "Illustrative scenarios: " + str(len(report.get("scenarios", []))),
             "cost_adjusted": "Budgets compared: " + ", ".join(sorted(report.get("budgets", {}))),
             "decision_quality": "Forward validation: " + str(report.get("forward_validation", "NOT_ESTABLISHED")) + "; readiness: " + str(report.get("live_trading_readiness", "BLOCKED")),
+            "rolling_audit": "Retrospective windows: " + str(report.get("windows_evaluated", 0)) + "; council wins: " + str(report.get("council_win_windows", 0)),
             "forward_attribution": "Observed dates: " + str(report.get("observed_dates", 0)),
             "unified_evidence": "Blockers: " + ", ".join(report.get("blockers", [])),
         }
@@ -55,6 +56,7 @@ def load_available_reports(folder="."):
         "execution_costs": "execution_cost_study.json",
         "cost_adjusted": "cost_adjusted_portfolio_study.json",
         "decision_quality": "decision_quality_audit.json",
+        "rolling_audit": "rolling_decision_audit.json",
         "forward_attribution": "forward_attribution_report.json",
         "unified_evidence": "portfolio_unified_evidence_review.json",
     }
