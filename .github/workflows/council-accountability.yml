@@ -1,0 +1,25 @@
+name: Project ET six-brain decision accountability
+on:
+  schedule:
+    - cron: '15 3 * * 2-6'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  explain:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Run offline tests
+        run: python -m unittest discover -s tests -v
+      - name: Explain research council decisions
+        run: python run_council_accountability.py > council_accountability_report.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: project-et-council-accountability
+          path: council_accountability_report.json
+          retention-days: 90
