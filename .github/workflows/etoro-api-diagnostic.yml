@@ -10,7 +10,7 @@ jobs:
     steps:
       - name: Check authentication and instrument search
         env:
-          ETORO_API_KEY: ${{ secrets.ETORO_API_KEY }}
+          ETORO_API_KEY: ${{ secrets.ETORO_PUBLIC_KEY }}
           ETORO_USER_KEY: ${{ secrets.ETORO_USER_KEY }}
         run: |
           python - <<'PY'
@@ -18,7 +18,7 @@ jobs:
           api_key = os.environ.get("ETORO_API_KEY", "")
           user_key = os.environ.get("ETORO_USER_KEY", "")
           if not api_key or not user_key:
-              print("MISSING_SECRET: Check ETORO_API_KEY and ETORO_USER_KEY names.")
+              print("MISSING_SECRET: Check ETORO_PUBLIC_KEY and ETORO_USER_KEY secret names.")
               raise SystemExit(1)
           url = "https://public-api.etoro.com/api/v1/market-data/search?" + urllib.parse.urlencode({"internalSymbolFull": "AAPL"})
           req = urllib.request.Request(url, headers={
